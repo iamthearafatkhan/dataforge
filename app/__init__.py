@@ -32,7 +32,8 @@ def create_app():
     # Friendly 413 handler
     @app.errorhandler(413)
     def too_large(_e):
-        msg = "File exceeds the 100 MB limit."
+        limit_mb = app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
+        msg = f"File exceeds the {limit_mb} MB limit."
         if request.path.startswith("/api/"):
             return jsonify({"ok": False, "error": msg}), 413
         flash(msg, "error")
