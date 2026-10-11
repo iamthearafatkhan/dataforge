@@ -81,6 +81,21 @@
           >SQL</a
         >
         <a
+          href="{{ url_for('main.pivot_page') }}"
+          class="navlink {% if request.endpoint == 'main.pivot_page' %}active{% endif %}"
+          >Pivot</a
+        >
+        <a
+          href="{{ url_for('main.formula_page') }}"
+          class="navlink {% if request.endpoint == 'main.formula_page' %}active{% endif %}"
+          >Formula</a
+        >
+        <a
+          href="{{ url_for('main.dashboard_page') }}"
+          class="navlink {% if request.endpoint == 'main.dashboard_page' %}active{% endif %}"
+          >Dashboard</a
+        >
+        <a
           href="{{ url_for('main.export_page') }}"
           class="navlink {% if request.endpoint == 'main.export_page' %}active{% endif %}"
           >Export</a

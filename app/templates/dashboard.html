@@ -1,0 +1,116 @@
+{% extends "base.html" %} {% block title %}Dashboard{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Dashboard Templates</h1>
+    <p class="page-desc">
+      One-click dashboards for common industries. Columns are auto-detected.
+    </p>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Choose a template</h2></div>
+  <div id="templates-grid" class="template-grid"></div>
+</section>
+
+<section class="card" id="dashboard-result" style="display: none">
+  <div class="card-head">
+    <h2 id="dashboard-title">Dashboard</h2>
+    <p class="muted" id="dashboard-desc"></p>
+  </div>
+  <div id="dashboard-charts" class="dashboard-grid"></div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  showLoader("Loading templates…");
+  fetch("/api/dashboard/templates")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) {
+        flash(d.error, "error");
+        return;
+      }
+      const wrap = document.getElementById("templates-grid");
+      wrap.innerHTML = d.templates
+        .map(
+          (t) =>
+            `<button class="template-card" data-no-loader onclick="renderTemplate('${t.key}')">
+           <b>${t.name}</b>
+           <span class="muted">${t.description}</span>
+         </button>`,
+        )
+        .join("");
+    });
+
+  function renderTemplate(key) {
+    showLoader("Rendering dashboard…");
+    fetch(`/api/dashboard/render/${key}`)
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        const dash = d.dashboard;
+        document.getElementById("dashboard-result").style.display = "";
+        document.getElementById("dashboard-title").textContent = dash.name;
+        document.getElementById("dashboard-desc").textContent =
+          dash.description +
+          (dash.charts.length
+            ? ` · ${dash.charts.length} charts`
+            : " · No compatible columns found.");
+        const wrap = document.getElementById("dashboard-charts");
+
+        if (!dash.charts.length) {
+          wrap.innerHTML =
+            '<div class="chart-empty" style="grid-column: 1/-1;">No columns matched this template. Try a different one or upload data with numeric and categorical columns.</div>';
+          return;
+        }
+
+        wrap.innerHTML = dash.charts
+          .map(
+            (c, i) =>
+              `<div class="dash-chart-card">
+             <div class="dash-chart-head">
+               <span>${c.title}</span>
+               <button class="btn ghost" data-no-loader onclick="downloadDashChart('dash-chart-${i}', '${escapeAttr(c.title)}')">⬇ PNG</button>
+             </div>
+             <div id="dash-chart-${i}" class="chart-box" style="min-height: 360px;"></div>
+           </div>`,
+          )
+          .join("");
+
+        dash.charts.forEach((c, i) => {
+          Plotly.newPlot(
+            `dash-chart-${i}`,
+            c.figure.data,
+            c.figure.layout,
+            PLOTLY_CONFIG,
+          );
+        });
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Render failed", "error");
+      });
+  }
+
+  function downloadDashChart(divId, title) {
+    Plotly.downloadImage(divId, {
+      format: "png",
+      width: 1400,
+      height: 800,
+      filename: "dataforge-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    });
+  }
+
+  function escapeAttr(s) {
+    return String(s).replace(/'/g, "\\'");
+  }
+</script>
+{% endblock %}

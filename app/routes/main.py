@@ -74,6 +74,23 @@ def export_page():
     g = _expire_guard()
     return g or render_template("export.html")
 
+@main_bp.route("/pivot")
+def pivot_page():
+    g = _expire_guard()
+    return g or render_template("pivot.html")
+
+
+@main_bp.route("/formula")
+def formula_page():
+    g = _expire_guard()
+    return g or render_template("formula.html")
+
+
+@main_bp.route("/dashboard")
+def dashboard_page():
+    g = _expire_guard()
+    return g or render_template("dashboard.html")
+
 
 @main_bp.route("/reset", methods=["POST"])
 def reset():

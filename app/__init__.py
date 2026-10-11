@@ -20,6 +20,10 @@ def create_app():
     from app.routes.export import export_bp
     from app.routes.pipeline import pipeline_bp
     from app.routes.sql import sql_bp
+    from app.routes.pivot import pivot_bp
+    from app.routes.formula import formula_bp
+    from app.routes.dashboard import dashboard_bp
+
 
 
     app.register_blueprint(main_bp)
@@ -28,6 +32,9 @@ def create_app():
     app.register_blueprint(export_bp, url_prefix="/api/export")
     app.register_blueprint(pipeline_bp, url_prefix="/api/pipeline")
     app.register_blueprint(sql_bp, url_prefix="/api/sql")
+    app.register_blueprint(pivot_bp, url_prefix="/api/pivot")
+    app.register_blueprint(formula_bp, url_prefix="/api/formula")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
 
     # Friendly 413 handler
     @app.errorhandler(413)

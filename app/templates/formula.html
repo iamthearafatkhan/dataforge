@@ -1,0 +1,203 @@
+{% extends "base.html" %} {% block title %}Formula{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Formula Builder</h1>
+    <p class="page-desc">
+      Compute new columns with Excel-style formulas. Start with <code>=</code>.
+      Reference columns by name.
+    </p>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Formula</h2>
+    <p class="muted">
+      Examples: <code>=price * quantity</code>,
+      <code>=IF(price &gt; 100, "high", "low")</code>, <code>=UPPER(name)</code>
+    </p>
+  </div>
+  <div class="formula-row">
+    <input
+      type="text"
+      id="f-expr"
+      class="formula-input"
+      placeholder="=price * 0.9"
+      spellcheck="false"
+    />
+    <input
+      type="text"
+      id="f-target"
+      class="formula-target"
+      placeholder="new column name"
+    />
+  </div>
+  <div class="formula-actions">
+    <button class="btn" onclick="previewFormula()" data-no-loader>
+      Preview
+    </button>
+    <button class="btn primary" onclick="applyFormula()" data-no-loader>
+      Add as column
+    </button>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Examples</h2>
+    <p class="muted">Click to load into the editor.</p>
+  </div>
+  <div id="examples-list" class="suggestions"></div>
+</section>
+
+<section class="card">
+  <div
+    class="card-head"
+    style="display: flex; justify-content: space-between; align-items: center"
+  >
+    <div>
+      <h2>Preview</h2>
+      <p class="muted" id="formula-meta">Preview a formula to see results.</p>
+    </div>
+  </div>
+  <div id="formula-wrap" class="table-wrap">
+    <div class="chart-empty">No preview yet.</div>
+  </div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  showLoader("Loading examples…");
+  fetch("/api/formula/examples")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) return;
+      const wrap = document.getElementById("examples-list");
+      wrap.innerHTML = d.examples
+        .map(
+          (ex, i) =>
+            `<button class="suggestion" data-no-loader onclick="loadExample(${i})">
+           <b>${ex.label}</b>
+           <span class="muted" style="display:block; font-family: ui-monospace, monospace; font-size: 12px; margin-top: 3px;">${ex.formula}</span>
+         </button>`,
+        )
+        .join("");
+      window.__examples = d.examples;
+    });
+
+  function loadExample(i) {
+    const ex = window.__examples[i];
+    document.getElementById("f-expr").value = ex.formula;
+    document.getElementById("f-target").value = ex.target;
+  }
+
+  function previewFormula() {
+    const expr = document.getElementById("f-expr").value.trim();
+    if (!expr) {
+      flash("Type a formula first.", "error");
+      return;
+    }
+
+    showLoader("Evaluating…");
+    fetch("/api/formula/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formula: expr }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        renderPreview(d.result);
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Request failed", "error");
+      });
+  }
+
+  function renderPreview(info) {
+    document.getElementById("formula-meta").textContent =
+      `${info.total.toLocaleString()} rows · ${info.non_null} non-null · dtype ${info.dtype}`;
+    const wrap = document.getElementById("formula-wrap");
+    const cols = info.preview_columns;
+    const thead =
+      "<thead><tr>" +
+      cols.map((c) => `<th>${esc(c)}</th>`).join("") +
+      "</tr></thead>";
+    const tbody =
+      "<tbody>" +
+      info.preview
+        .map(
+          (row) =>
+            "<tr>" +
+            row
+              .map(
+                (v) =>
+                  `<td>${v === null ? '<span class="null-cell">NULL</span>' : esc(String(v))}</td>`,
+              )
+              .join("") +
+            "</tr>",
+        )
+        .join("") +
+      "</tbody>";
+    wrap.innerHTML = `<table class="sql-table">${thead}${tbody}</table>`;
+  }
+
+  function applyFormula() {
+    const expr = document.getElementById("f-expr").value.trim();
+    const target = document.getElementById("f-target").value.trim();
+    if (!expr) {
+      flash("Type a formula first.", "error");
+      return;
+    }
+    if (!target) {
+      flash("Give the new column a name.", "error");
+      return;
+    }
+
+    showLoader("Adding column…");
+    fetch("/api/formula/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formula: expr, target }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        flash(
+          `Column "${d.result.column}" added — ${d.shape.rows.toLocaleString()} rows × ${d.shape.cols} cols`,
+          "success",
+        );
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Request failed", "error");
+      });
+  }
+
+  function esc(s) {
+    return String(s).replace(
+      /[&<>"']/g,
+      (m) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[m],
+    );
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,232 @@
+{% extends "base.html" %} {% block title %}Pivot{% endblock %} {% block content
+%}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Pivot Table</h1>
+    <p class="page-desc">
+      Choose row fields, column fields, values, and aggregations. Add margins
+      for totals.
+    </p>
+  </div>
+  <div class="page-actions">
+    <button class="btn ghost" onclick="exportPivot()" data-no-loader>
+      ⬇ Export CSV
+    </button>
+    <button class="btn primary" onclick="runPivot()" data-no-loader>
+      Build pivot
+    </button>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Configure</h2></div>
+  <div class="pivot-grid">
+    <div class="pivot-field">
+      <label>Row fields</label>
+      <select id="p-row" multiple size="6"></select>
+      <p class="muted">Group data by these columns.</p>
+    </div>
+    <div class="pivot-field">
+      <label>Column fields <span class="muted">(optional)</span></label>
+      <select id="p-col" multiple size="6"></select>
+      <p class="muted">Split columns horizontally.</p>
+    </div>
+    <div class="pivot-field">
+      <label>Value fields</label>
+      <select id="p-val" multiple size="6"></select>
+      <p class="muted">Numerical columns to aggregate.</p>
+    </div>
+    <div class="pivot-field">
+      <label>Aggregations</label>
+      <select id="p-agg" multiple size="6"></select>
+      <p class="muted">Multiple selections produce cross-aggregations.</p>
+    </div>
+  </div>
+  <div class="toggle-row" style="margin-top: 14px">
+    <label class="switch">
+      <input type="checkbox" id="p-margins" />
+      <span class="slider"></span>
+      <span class="switch-label">Add totals (margins)</span>
+    </label>
+  </div>
+</section>
+
+<section class="card">
+  <div
+    class="card-head"
+    style="display: flex; justify-content: space-between; align-items: center"
+  >
+    <div>
+      <h2>Result</h2>
+      <p class="muted" id="pivot-meta">Configure and click Build pivot.</p>
+    </div>
+  </div>
+  <div id="pivot-wrap" class="table-wrap">
+    <div class="chart-empty">No pivot yet.</div>
+  </div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  let SUGGESTED = {};
+
+  showLoader("Loading columns…");
+  fetch("/api/pivot/suggest")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) {
+        flash(d.error, "error");
+        return;
+      }
+      SUGGESTED = d.suggested;
+      const opts = d.columns
+        .map((c) => `<option value="${c}">${c}</option>`)
+        .join("");
+      ["p-row", "p-col", "p-val"].forEach(
+        (id) => (document.getElementById(id).innerHTML = opts),
+      );
+      document.getElementById("p-agg").innerHTML = d.aggfuncs
+        .map((a) => `<option value="${a}">${a}</option>`)
+        .join("");
+      SUGGESTED.rows.forEach((c) => preselect("p-row", c));
+      SUGGESTED.cols.forEach((c) => preselect("p-col", c));
+      SUGGESTED.values.forEach((c) => preselect("p-val", c));
+      SUGGESTED.aggfuncs.forEach((c) => preselect("p-agg", c));
+    });
+
+  function preselect(id, val) {
+    const sel = document.getElementById(id);
+    [...sel.options].forEach((o) => {
+      if (o.value === val) o.selected = true;
+    });
+  }
+
+  function getMulti(id) {
+    return [...document.getElementById(id).selectedOptions].map((o) => o.value);
+  }
+
+  function buildBody() {
+    return {
+      rows: getMulti("p-row"),
+      cols: getMulti("p-col"),
+      values: getMulti("p-val"),
+      aggfuncs: getMulti("p-agg"),
+      margins: document.getElementById("p-margins").checked,
+    };
+  }
+
+  let LAST = null;
+
+  function runPivot() {
+    const body = buildBody();
+    if (!body.values.length) {
+      flash("Pick at least one value field.", "error");
+      return;
+    }
+    if (!body.rows.length && !body.cols.length) {
+      flash("Pick at least one row or column field.", "error");
+      return;
+    }
+    if (!body.aggfuncs.length) {
+      flash("Pick at least one aggregation.", "error");
+      return;
+    }
+
+    showLoader("Building pivot…");
+    LAST = body;
+    fetch("/api/pivot/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        renderPivot(d.result);
+      })
+      .catch((e) => {
+        hideLoader();
+        flash("Request failed", "error");
+      });
+  }
+
+  function renderPivot(res) {
+    document.getElementById("pivot-meta").textContent =
+      `${res.shape[0].toLocaleString()} rows × ${res.shape[1]} cols`;
+    const wrap = document.getElementById("pivot-wrap");
+    if (!res.rows.length) {
+      wrap.innerHTML = '<div class="chart-empty">Empty result.</div>';
+      return;
+    }
+    const thead =
+      "<thead><tr>" +
+      res.columns.map((c) => `<th>${esc(c)}</th>`).join("") +
+      "</tr></thead>";
+    const tbody =
+      "<tbody>" +
+      res.rows
+        .map(
+          (r) =>
+            "<tr>" +
+            r
+              .map(
+                (v) =>
+                  `<td>${v === null ? '<span class="null-cell">—</span>' : esc(String(v))}</td>`,
+              )
+              .join("") +
+            "</tr>",
+        )
+        .join("") +
+      "</tbody>";
+    wrap.innerHTML = `<table class="sql-table">${thead}${tbody}</table>`;
+  }
+
+  function esc(s) {
+    return String(s).replace(
+      /[&<>"']/g,
+      (m) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[m],
+    );
+  }
+
+  function exportPivot() {
+    if (!LAST) {
+      flash("Build a pivot first.", "error");
+      return;
+    }
+    fetch("/api/pivot/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(LAST),
+    })
+      .then((r) => {
+        if (!r.ok)
+          return r.json().then((d) => {
+            throw new Error(d.error || "Export failed");
+          });
+        return r.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "dataforge_pivot.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((e) => flash(e.message, "error"));
+  }
+</script>
+{% endblock %}
