@@ -1,0 +1,395 @@
+{% extends "base.html" %} {% block title %}Home{% endblock %} {% block content
+%}
+
+<section class="hero">
+  <div class="hero-orbs" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+  </div>
+
+  <p class="eyebrow fade-up">
+    Data preprocessing · Visualization · SQL · Export
+  </p>
+  <h1 class="hero-title fade-up delay-1">
+    <span class="typewriter" id="typed">Clean. Understand. Export.</span>
+    <span class="cursor">|</span>
+  </h1>
+  <p class="hero-sub fade-up delay-2">
+    Upload a CSV, Excel, or JSON file. Profile it. Impute missing values per
+    column. Visualize interactively. Query with SQL. Download in the format you
+    need.
+  </p>
+
+  {% if has_data %}
+  <div class="card resume-card fade-up delay-3">
+    <div class="resume-head">
+      <span class="resume-dot"></span>
+      <b>You have a dataset loaded</b>
+    </div>
+    <p class="muted">
+      It will stay available for {{ brand.ttl_hours }} hours. Jump straight back
+      in, or upload a new file below.
+    </p>
+    <div class="resume-actions">
+      <a class="btn primary" href="{{ url_for('main.profile_page') }}"
+        >Resume → Profile</a
+      >
+      <a class="btn" href="{{ url_for('main.preprocess_page') }}">Preprocess</a>
+      <a class="btn" href="{{ url_for('main.visualize_page') }}">Visualize</a>
+      <a class="btn" href="{{ url_for('main.sql_page') }}">SQL</a>
+      <a class="btn" href="{{ url_for('main.export_page') }}">Export</a>
+    </div>
+  </div>
+  {% endif %}
+
+  <form
+    action="{{ url_for('main.upload') }}"
+    method="post"
+    enctype="multipart/form-data"
+    class="upload-form fade-up delay-3"
+    id="upload-form"
+  >
+    <label class="file-drop" id="file-drop">
+      <input
+        type="file"
+        name="file"
+        id="file-input"
+        accept=".csv,.xlsx,.xls,.json"
+        required
+        hidden
+      />
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        width="34"
+        height="34"
+      >
+        <path
+          d="M12 16V4M7 9l5-5 5 5M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+        />
+      </svg>
+      <span class="file-drop-text">
+        {% if has_data %}Replace with a new file{% else %}Drop file here or
+        <u>click to browse</u>{% endif %}
+      </span>
+      <span class="file-drop-hint">CSV · XLSX · XLS · JSON — up to 100 MB</span>
+      <span class="file-chosen" id="file-chosen"></span>
+    </label>
+    <button
+      type="submit"
+      class="btn {% if not has_data %}primary{% endif %}"
+      id="upload-btn"
+    >
+      {% if has_data %}Upload &amp; replace{% else %}Start processing{% endif %}
+    </button>
+  </form>
+
+  <details class="apply-pipeline">
+    <summary>Have a saved pipeline? Apply it to new data →</summary>
+    <form
+      action="/api/pipeline/apply"
+      method="post"
+      enctype="multipart/form-data"
+      class="upload-form"
+      id="apply-form"
+    >
+      <label class="file-drop small">
+        <input
+          type="file"
+          name="file"
+          id="apply-data"
+          accept=".csv,.xlsx,.xls,.json"
+          required
+          hidden
+        />
+        <span class="file-drop-text"
+          >1 · Drop your data file or <u>browse</u></span
+        >
+        <span class="file-chosen" id="apply-data-name"></span>
+      </label>
+      <label class="file-drop small">
+        <input
+          type="file"
+          name="pipeline"
+          id="apply-yaml"
+          accept=".yaml,.yml"
+          required
+          hidden
+        />
+        <span class="file-drop-text"
+          >2 · Drop your pipeline.yaml or <u>browse</u></span
+        >
+        <span class="file-chosen" id="apply-yaml-name"></span>
+      </label>
+      <button class="btn primary" type="submit">Apply pipeline</button>
+    </form>
+  </details>
+
+  <div class="hero-steps fade-up delay-4">
+    <div class="step">
+      <span class="step-num">1</span><b>Profile</b
+      ><span>See per-column insights &amp; recommendations</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span><b>Preprocess</b
+      ><span>Per-feature imputation — KNN, MICE, mean, mode</span>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span><b>Visualize</b
+      ><span>Interactive Plotly dashboards, download any chart</span>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span><b>SQL</b
+      ><span>Query your data with DuckDB — no setup required</span>
+    </div>
+    <div class="step">
+      <span class="step-num">5</span><b>Export</b
+      ><span>CSV · Excel · JSON · XML — ready to use</span>
+    </div>
+  </div>
+
+  <p class="muted fade-up delay-4">
+    Files are stored per-session for {{ brand.ttl_hours }} hours and never
+    shared.
+  </p>
+</section>
+
+<section class="faq">
+  <h2 class="faq-title">Frequently asked questions</h2>
+
+  <details class="faq-item">
+    <summary>What file formats can I upload?</summary>
+    <p>
+      CSV, Excel (.xlsx / .xls), and JSON. Up to 100 MB per file. For larger
+      datasets, split the file or extract a subset before uploading.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>What's the maximum file size?</summary>
+    <p>
+      100 MB per upload. Above that, browser memory becomes the bottleneck — for
+      very large datasets, split the file. Polars-based streaming for 1 GB+
+      files is on the roadmap.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>How long is my data kept?</summary>
+    <p>
+      24 hours from your last activity. After that it's automatically deleted.
+      Files are stored per-browser-session, never shared between users, and
+      never sent to a third party.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>How does the tool decide which imputation method to use?</summary>
+    <p>
+      It profiles each column: missingness percentage, dtype, cardinality,
+      distribution skew, and correlation with other columns. Numeric with low
+      skew gets mean; skewed gets median; correlated numeric gets KNN;
+      categorical gets mode. <b>You can always override the suggestion</b> —
+      nothing runs without your confirmation.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>
+      What's the difference between KNN, MICE, and mean imputation?
+    </summary>
+    <p>
+      <b>Mean</b> replaces missing values with the column average — fast, but
+      ignores relationships between columns and shrinks variance.
+      <b>KNN</b> finds similar rows and averages their values — good when
+      columns correlate. <b>MICE</b> iteratively models each column from the
+      others — slowest but statistically strongest. When in doubt, use MICE for
+      analysis, KNN for ML training.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Can I reuse the same cleaning steps on new data?</summary>
+    <p>
+      Yes. After preprocessing, click <b>Export pipeline</b>. You get a YAML
+      file describing every choice. On the home page, upload any new CSV plus
+      that YAML — DataForge applies the identical recipe using the fitted
+      parameters from your original run. No re-selecting anything, no train/test
+      leakage.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Is this really training/test-leakage safe?</summary>
+    <p>
+      Yes for pipelines applied via the YAML workflow. When you export a
+      pipeline, we save the fitted state (means, KNN models, MICE coefficients).
+      When you re-apply it, we <b>reuse</b> those instead of re-fitting on the
+      new data. That's the correct way to do it — the same approach production
+      ML systems use.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Can I run SQL against my uploaded file?</summary>
+    <p>
+      Yes — click <b>SQL</b> in the top navigation. Your dataset is available as
+      the table <code>df</code>. You can write any <code>SELECT</code> or
+      <code>WITH</code> query, including <code>GROUP BY</code>,
+      <code>JOIN</code>, window functions, and CTEs. Results render as a table
+      and export to CSV or JSON.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Is it safe to run SQL here?</summary>
+    <p>
+      Yes. Only <b>SELECT</b> and <b>WITH</b> statements are allowed. Statements
+      like <code>DROP</code>, <code>DELETE</code>, <code>COPY</code>, and
+      <code>ATTACH</code> are blocked, and external file access is disabled at
+      the database level. You cannot read or write files on the server.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Can I pivot data like in Excel?</summary>
+    <p>
+      Coming next. The Pivot page will let you pick row columns, column columns,
+      value columns, and an aggregation — one-click pivot tables. In the
+      meantime, the SQL page supports pivots via <code>GROUP BY</code> and
+      conditional aggregation.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Do I need to install anything to use this?</summary>
+    <p>
+      No. DataForge runs entirely in your browser once it's running on a server.
+      You only need Python if you're self-hosting the tool.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Is my data used to train any model?</summary>
+    <p>
+      No. Your data is never used for training, never shared, never logged to an
+      external service. It lives on the server for 24 hours and is then deleted.
+      If you self-host, it never leaves your machine.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Where can I report bugs or request features?</summary>
+    <p>
+      Open an issue on
+      <a
+        href="https://github.com/iamthearafatkhan"
+        target="_blank"
+        rel="noopener"
+        >GitHub</a
+      >. Same for pull requests — the tool is fully open source.
+    </p>
+  </details>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  const TYPED = [
+    "Clean. Understand. Export.",
+    "Profile every column.",
+    "Impute smarter, not harder.",
+    "Query with SQL. Ship clean data.",
+  ];
+  let ti = 0,
+    ci = 0,
+    deleting = false;
+  const el = document.getElementById("typed");
+  function type() {
+    const word = TYPED[ti];
+    el.textContent = word.slice(0, ci);
+    if (!deleting && ci < word.length) {
+      ci++;
+      setTimeout(type, 55);
+    } else if (!deleting) {
+      deleting = true;
+      setTimeout(type, 1400);
+    } else if (ci > 0) {
+      ci--;
+      setTimeout(type, 30);
+    } else {
+      deleting = false;
+      ti = (ti + 1) % TYPED.length;
+      setTimeout(type, 300);
+    }
+  }
+  type();
+
+  const input = document.getElementById("file-input");
+  const chosen = document.getElementById("file-chosen");
+  const drop = document.getElementById("file-drop");
+  input.addEventListener("change", () => {
+    chosen.textContent = input.files[0] ? input.files[0].name : "";
+  });
+  ["dragover", "dragenter"].forEach((e) =>
+    drop.addEventListener(e, (ev) => {
+      ev.preventDefault();
+      drop.classList.add("dragging");
+    }),
+  );
+  ["dragleave", "drop"].forEach((e) =>
+    drop.addEventListener(e, (ev) => {
+      ev.preventDefault();
+      drop.classList.remove("dragging");
+    }),
+  );
+  drop.addEventListener("drop", (ev) => {
+    if (ev.dataTransfer.files.length) {
+      input.files = ev.dataTransfer.files;
+      chosen.textContent = input.files[0].name;
+    }
+  });
+
+  document.getElementById("upload-form").addEventListener("submit", () => {
+    showLoader("Uploading & profiling…");
+  });
+
+  const applyData = document.getElementById("apply-data");
+  const applyYaml = document.getElementById("apply-yaml");
+  if (applyData) {
+    applyData.addEventListener("change", () => {
+      document.getElementById("apply-data-name").textContent =
+        applyData.files[0]?.name || "";
+    });
+    applyYaml.addEventListener("change", () => {
+      document.getElementById("apply-yaml-name").textContent =
+        applyYaml.files[0]?.name || "";
+    });
+    document.getElementById("apply-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      showLoader("Applying pipeline…");
+      fetch("/api/pipeline/apply", { method: "POST", body: fd })
+        .then((r) => r.json())
+        .then((d) => {
+          hideLoader();
+          if (d.ok) {
+            flash(
+              `Pipeline applied: ${d.shape.rows.toLocaleString()} rows × ${d.shape.cols} cols`,
+              "success",
+            );
+            setTimeout(() => (window.location.href = "/profile"), 900);
+          } else {
+            flash("Error: " + d.error, "error");
+          }
+        })
+        .catch(() => {
+          hideLoader();
+          flash("Request failed", "error");
+        });
+    });
+  }
+</script>
+{% endblock %}

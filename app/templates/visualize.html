@@ -1,0 +1,224 @@
+{% extends "base.html" %} {% block title %}Visualize{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Visualize</h1>
+    <p class="page-desc">
+      Every chart is interactive. Use the Plotly toolbar or the download button
+      to save any chart as PNG.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('main.export_page') }}" class="btn primary"
+      >Next: Export →</a
+    >
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Custom chart</h2>
+    <p class="muted">
+      Pick a chart type. Fields adapt based on what the chart needs.
+    </p>
+  </div>
+  <div class="chart-controls">
+    <select id="chart-kind">
+      <option value="histogram">Histogram</option>
+      <option value="box">Box plot</option>
+      <option value="box_category">Box by category</option>
+      <option value="violin_category">Violin by category</option>
+      <option value="value_counts">Top values</option>
+      <option value="scatter">Scatter</option>
+      <option value="line">Line</option>
+      <option value="time_series">Time series</option>
+      <option value="scatter_matrix">Scatter matrix</option>
+      <option value="category_heatmap">Category heatmap</option>
+    </select>
+
+    <select id="field-x" class="field" data-role="x"></select>
+    <select id="field-y" class="field" data-role="y"></select>
+    <select id="field-z" class="field" data-role="z"></select>
+
+    <select id="field-freq" class="field" data-role="freq">
+      <option value="D">Daily</option>
+      <option value="W">Weekly</option>
+      <option value="M">Monthly</option>
+      <option value="Q">Quarterly</option>
+      <option value="Y">Yearly</option>
+    </select>
+
+    <select id="field-agg" class="field" data-role="agg">
+      <option value="mean">Average</option>
+      <option value="sum">Sum</option>
+      <option value="count">Count</option>
+      <option value="median">Median</option>
+    </select>
+
+    <button class="btn primary" onclick="renderChart()">Render</button>
+    <button
+      class="btn ghost"
+      id="dl-chart"
+      data-no-loader
+      onclick="downloadChart('chart', 'custom-chart')"
+      disabled
+    >
+      ⬇ PNG
+    </button>
+  </div>
+  <div id="chart" class="chart-box">
+    <div class="chart-empty">Pick a chart type and press Render.</div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Dataset overview</h2>
+    <p class="muted">Auto-generated views of your cleaned dataset.</p>
+  </div>
+  <div id="chart-missing" class="chart-box"></div>
+  <div id="chart-missing-matrix" class="chart-box"></div>
+  <div id="chart-corr" class="chart-box"></div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  let COLUMNS = [];
+  showLoader("Loading overview…");
+
+  fetch("/api/visualize/overview")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      COLUMNS = d.columns;
+      const opts = COLUMNS.map((c) => `<option>${c}</option>`).join("");
+      ["field-x", "field-y", "field-z"].forEach((id) => {
+        document.getElementById(id).innerHTML = opts;
+      });
+      if (d.charts.missingness)
+        Plotly.newPlot(
+          "chart-missing",
+          d.charts.missingness.data,
+          d.charts.missingness.layout,
+          PLOTLY_CONFIG,
+        );
+      if (d.charts.correlation)
+        Plotly.newPlot(
+          "chart-corr",
+          d.charts.correlation.data,
+          d.charts.correlation.layout,
+          PLOTLY_CONFIG,
+        );
+    });
+
+  fetch("/api/visualize/missingness_matrix")
+    .then((r) => r.json())
+    .then((d) => {
+      if (d.chart)
+        Plotly.newPlot(
+          "chart-missing-matrix",
+          d.chart.data,
+          d.chart.layout,
+          PLOTLY_CONFIG,
+        );
+    });
+
+  function updateFields() {
+    const kind = document.getElementById("chart-kind").value;
+    const show = (id, yes) =>
+      (document.getElementById(id).style.display = yes
+        ? "inline-block"
+        : "none");
+
+    show("field-x", true);
+    show("field-y", false);
+    show("field-z", false);
+    show("field-freq", false);
+    show("field-agg", false);
+
+    if (kind === "histogram" || kind === "box" || kind === "value_counts") {
+      show("field-y", false);
+    } else if (kind === "scatter" || kind === "line") {
+      show("field-y", true);
+      show("field-z", true);
+    } else if (kind === "box_category" || kind === "violin_category") {
+      show("field-y", true);
+    } else if (kind === "time_series") {
+      show("field-y", true);
+      show("field-freq", true);
+    } else if (kind === "scatter_matrix") {
+      show("field-y", true);
+      show("field-z", true);
+    } else if (kind === "category_heatmap") {
+      show("field-y", true);
+      show("field-z", true);
+      show("field-agg", true);
+    }
+  }
+  document
+    .getElementById("chart-kind")
+    .addEventListener("change", updateFields);
+  updateFields();
+
+  function renderChart() {
+    const kind = document.getElementById("chart-kind").value;
+    const x = document.getElementById("field-x").value;
+    const y = document.getElementById("field-y").value;
+    const z = document.getElementById("field-z").value;
+    const body = { kind };
+
+    if (kind === "histogram" || kind === "box" || kind === "value_counts") {
+      body.col = x;
+    } else if (kind === "scatter" || kind === "line") {
+      body.x = x;
+      body.y = y;
+      body.color = z || null;
+    } else if (kind === "box_category" || kind === "violin_category") {
+      body.x = x;
+      body.y = y;
+    } else if (kind === "time_series") {
+      body.x = x;
+      body.y = y;
+      body.freq = document.getElementById("field-freq").value;
+    } else if (kind === "scatter_matrix") {
+      body.cols = [x, y, z].filter(Boolean);
+    } else if (kind === "category_heatmap") {
+      body.row = x;
+      body.col = y;
+      body.value = z;
+      body.agg = document.getElementById("field-agg").value;
+    }
+
+    showLoader("Rendering…");
+    fetch("/api/visualize/chart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (d.error) {
+          flash(d.error, "error");
+          return;
+        }
+        Plotly.newPlot("chart", d.chart.data, d.chart.layout, PLOTLY_CONFIG);
+        document.getElementById("dl-chart").disabled = false;
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Render failed", "error");
+      });
+  }
+
+  function downloadChart(divId, filename) {
+    Plotly.downloadImage(divId, {
+      format: "png",
+      width: 1400,
+      height: 800,
+      filename: "dataforge-" + filename,
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,297 @@
+{% extends "base.html" %} {% block title %}SQL{% endblock %} {% block content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">SQL Studio</h1>
+    <p class="page-desc">
+      Write SQL directly against your cleaned dataset. The table is named
+      <code>df</code>. Only <b>SELECT</b> and <b>WITH</b> statements are
+      allowed.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('main.export_page') }}" class="btn"
+      >Export cleaned data →</a
+    >
+  </div>
+</div>
+
+<div class="sql-layout">
+  <aside class="sql-sidebar card">
+    <div class="card-head">
+      <h2>Schema</h2>
+      <p class="muted" id="schema-meta">Loading…</p>
+    </div>
+    <div id="schema-list" class="schema-list"></div>
+
+    <div class="card-head" style="margin-top: 20px">
+      <h2>Starter queries</h2>
+      <p class="muted">Click to load into the editor.</p>
+    </div>
+    <div id="suggestions" class="suggestions"></div>
+  </aside>
+
+  <section class="sql-main">
+    <div class="card">
+      <div
+        class="card-head"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <div>
+          <h2>Query editor</h2>
+          <p class="muted">Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to run.</p>
+        </div>
+        <div class="sql-actions">
+          <button class="btn ghost" onclick="clearEditor()" data-no-loader>
+            Clear
+          </button>
+          <button class="btn primary" onclick="runQuery()" data-no-loader>
+            ▶ Run
+          </button>
+        </div>
+      </div>
+      <textarea
+        id="sql-editor"
+        class="sql-editor"
+        spellcheck="false"
+        placeholder="SELECT * FROM df LIMIT 20;"
+      >
+SELECT * FROM df LIMIT 20;</textarea
+      >
+    </div>
+
+    <div class="card">
+      <div
+        class="card-head"
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <div>
+          <h2>Results</h2>
+          <p class="muted" id="result-meta">Run a query to see results.</p>
+        </div>
+        <div class="sql-actions">
+          <button
+            class="btn ghost"
+            id="dl-csv"
+            data-no-loader
+            onclick="exportResult('csv')"
+            disabled
+          >
+            ⬇ CSV
+          </button>
+          <button
+            class="btn ghost"
+            id="dl-json"
+            data-no-loader
+            onclick="exportResult('json')"
+            disabled
+          >
+            ⬇ JSON
+          </button>
+        </div>
+      </div>
+      <div id="result-wrap" class="table-wrap">
+        <div class="chart-empty">No results yet.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% endblock %} {% block scripts %}
+<script>
+  const editor = document.getElementById("sql-editor");
+  let lastSQL = "";
+
+  // Load schema + suggestions
+  showLoader("Loading schema…");
+  fetch("/api/sql/schema")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) {
+        flash(d.error || "Failed to load schema", "error");
+        return;
+      }
+
+      document.getElementById("schema-meta").textContent =
+        `${d.schema.row_count.toLocaleString()} rows · ${d.schema.columns.length} columns`;
+
+      const list = document.getElementById("schema-list");
+      list.innerHTML = d.schema.columns
+        .map(
+          (c) =>
+            `<div class="schema-row">
+           <code>${c.name}</code>
+           <span class="schema-type">${c.type}</span>
+         </div>`,
+        )
+        .join("");
+
+      const sug = document.getElementById("suggestions");
+      sug.innerHTML = d.suggestions
+        .map(
+          (s, i) =>
+            `<button class="suggestion" data-no-loader onclick="loadSuggestion(${i})">${s.label}</button>`,
+        )
+        .join("");
+      window.__suggestions = d.suggestions;
+    });
+
+  function loadSuggestion(i) {
+    const s = window.__suggestions[i];
+    editor.value = s.sql + ";";
+    editor.focus();
+  }
+
+  function clearEditor() {
+    editor.value = "";
+    editor.focus();
+  }
+
+  function runQuery() {
+    const sql = editor.value.trim();
+    if (!sql) {
+      flash("Type a query first.", "error");
+      return;
+    }
+
+    showLoader("Running query…");
+    lastSQL = sql;
+    fetch("/api/sql/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error || "Query failed", "error");
+          return;
+        }
+        renderResult(d.result);
+      })
+      .catch((err) => {
+        hideLoader();
+        flash("Request failed: " + err, "error");
+      });
+  }
+
+  function renderResult(res) {
+    const meta = document.getElementById("result-meta");
+    const cap = res.truncated
+      ? ` · showing first ${res.row_count.toLocaleString()}`
+      : "";
+    meta.textContent = `${res.total_rows.toLocaleString()} row${res.total_rows === 1 ? "" : "s"} · ${res.elapsed_ms} ms${cap}`;
+
+    const wrap = document.getElementById("result-wrap");
+    if (!res.rows.length) {
+      wrap.innerHTML = '<div class="chart-empty">Query returned 0 rows.</div>';
+      return;
+    }
+
+    const thead =
+      "<thead><tr>" +
+      res.columns.map((c) => `<th>${escapeHTML(c)}</th>`).join("") +
+      "</tr></thead>";
+    const tbody =
+      "<tbody>" +
+      res.rows
+        .map(
+          (row) =>
+            "<tr>" +
+            row
+              .map(
+                (v) =>
+                  `<td>${v === null ? '<span class="null-cell">NULL</span>' : escapeHTML(String(v))}</td>`,
+              )
+              .join("") +
+            "</tr>",
+        )
+        .join("") +
+      "</tbody>";
+
+    wrap.innerHTML = `<table class="sql-table">${thead}${tbody}</table>`;
+
+    document.getElementById("dl-csv").disabled = false;
+    document.getElementById("dl-json").disabled = false;
+  }
+
+  function escapeHTML(s) {
+    return s.replace(
+      /[&<>"']/g,
+      (m) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[m],
+    );
+  }
+
+  function exportResult(fmt) {
+    if (!lastSQL) return;
+    // Use a form POST so the browser handles the download natively
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = `/api/sql/export?fmt=${fmt}`;
+    form.target = "_blank";
+    form.style.display = "none";
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "sql";
+    input.value = lastSQL;
+    form.appendChild(input);
+
+    // Send as JSON via fetch to avoid CORS weirdness with form-encoded
+    fetch(`/api/sql/export?fmt=${fmt}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sql: lastSQL }),
+    })
+      .then((r) => {
+        if (!r.ok)
+          return r.json().then((d) => {
+            throw new Error(d.error || "Export failed");
+          });
+        return r.blob();
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `dataforge_query.${fmt}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((err) => flash(err.message, "error"));
+  }
+
+  // Editor behaviour
+  editor.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      runQuery();
+    }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      editor.value =
+        editor.value.slice(0, start) + "  " + editor.value.slice(end);
+      editor.selectionStart = editor.selectionEnd = start + 2;
+    }
+  });
+</script>
+{% endblock %}

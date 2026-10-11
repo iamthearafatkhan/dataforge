@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Export{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Export</h1>
+    <p class="page-desc">Your cleaned dataset is ready. Choose a format — the file downloads with proper MIME type and extension.</p>
+  </div>
+</div>
+
+<div class="export-grid">
+  <a class="export-card" href="{{ url_for('export.download', fmt='csv') }}">
+    <div class="export-icon">CSV</div>
+    <b>Comma-separated</b>
+    <span class="muted">Universal. Works everywhere.</span>
+  </a>
+  <a class="export-card" href="{{ url_for('export.download', fmt='xlsx') }}">
+    <div class="export-icon">XLSX</div>
+    <b>Excel workbook</b>
+    <span class="muted">For stakeholders & BI tools.</span>
+  </a>
+  <a class="export-card" href="{{ url_for('export.download', fmt='json') }}">
+    <div class="export-icon">JSON</div>
+    <b>Records JSON</b>
+    <span class="muted">For APIs and web apps.</span>
+  </a>
+  <a class="export-card" href="{{ url_for('export.download', fmt='xml') }}">
+    <div class="export-icon">XML</div>
+    <b>Structured XML</b>
+    <span class="muted">For legacy integrations.</span>
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-head"><h2>Need to start over?</h2></div>
+  <p class="muted">The original uploaded file is preserved in this session for {{ brand.ttl_hours }} hours. Reset discards every change since upload.</p>
+  <form method="post" action="{{ url_for('main.reset') }}">
+    <button class="btn ghost" type="submit">Reset to original</button>
+  </form>
+</div>
+
+{% endblock %}

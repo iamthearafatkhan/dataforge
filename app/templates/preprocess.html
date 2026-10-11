@@ -1,0 +1,201 @@
+{% extends "base.html" %} {% block title %}Preprocess{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Preprocess</h1>
+    <p class="page-desc">
+      Apply cleaning, then choose an imputation strategy <b>per column</b>.
+      Recommended strategies are pre-selected — override any of them.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('main.visualize_page') }}" class="btn primary"
+      >Next: Visualize →</a
+    >
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>1 · Cleaning operations</h2>
+    <p class="muted">
+      These run before imputation and are idempotent — safe to apply multiple
+      times.
+    </p>
+  </div>
+  <div class="toggle-row">
+    <label class="switch"
+      ><input type="checkbox" id="op-strip" /><span class="slider"></span
+      ><span class="switch-label">Strip whitespace</span></label
+    >
+    <label class="switch"
+      ><input type="checkbox" id="op-dtypes" /><span class="slider"></span
+      ><span class="switch-label">Auto-fix data types</span></label
+    >
+    <label class="switch"
+      ><input type="checkbox" id="op-dupes" /><span class="slider"></span
+      ><span class="switch-label">Drop duplicate rows</span></label
+    >
+  </div>
+  <button class="btn" onclick="applyClean()">Apply cleaning</button>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>2 · Per-column imputation</h2>
+    <p class="muted">
+      Only columns with missing values are shown. The reason under each name
+      explains the recommendation.
+    </p>
+  </div>
+  <div id="impute-table">
+    <div class="skeleton-rows"></div>
+  </div>
+  <button class="btn primary" onclick="applyImpute()">Apply imputation</button>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>3 · Save this recipe</h2>
+    <p class="muted">
+      Export a YAML file that captures every cleaning and imputation choice
+      above. Reuse it on new data with one upload — no re-selecting anything.
+    </p>
+  </div>
+  <div style="display: flex; gap: 10px; flex-wrap: wrap">
+    <button class="btn primary" onclick="exportPipeline()">
+      ⬇ Export pipeline (.yaml)
+    </button>
+    <button class="btn" onclick="previewPipeline()">Preview recipe</button>
+  </div>
+  <pre
+    id="pipeline-preview"
+    class="pipeline-preview"
+    style="display: none"
+  ></pre>
+</section>
+
+<p id="status" class="status muted"></p>
+
+{% endblock %} {% block scripts %}
+<script>
+  let strategies = {};
+
+  showLoader("Loading strategies…");
+
+  fetch("/api/preprocess/profile")
+    .then((r) => r.json())
+    .then((data) => {
+      hideLoader();
+      const cols = data.columns.filter((c) => c.missing > 0);
+      if (cols.length === 0) {
+        document.getElementById("impute-table").innerHTML =
+          '<p class="ok-big">No missing values — nothing to impute. 🎉</p>';
+        return;
+      }
+      const METHODS = [
+        "mean",
+        "median",
+        "mode",
+        "knn",
+        "mice",
+        "ffill",
+        "bfill",
+        "constant",
+        "drop",
+      ];
+      let html =
+        '<div class="table-wrap"><table><thead><tr><th>Column</th><th>Missing</th><th>Strategy</th></tr></thead><tbody>';
+      cols.forEach((c) => {
+        const opts = METHODS.map(
+          (m) =>
+            `<option value="${m}" ${m === c.recommendation.method ? "selected" : ""}>${m}</option>`,
+        ).join("");
+        html += `<tr>
+          <td><b>${c.name}</b><br><small class="muted">${c.recommendation.reason}</small></td>
+          <td>${c.missing} <span class="muted">(${c.missing_pct}%)</span></td>
+          <td><select data-col="${c.name}">${opts}</select></td>
+        </tr>`;
+        strategies[c.name] = { method: c.recommendation.method };
+      });
+      html += "</tbody></table></div>";
+      document.getElementById("impute-table").innerHTML = html;
+
+      document.querySelectorAll("#impute-table select").forEach((sel) => {
+        sel.addEventListener("change", (e) => {
+          strategies[e.target.dataset.col] = { method: e.target.value };
+        });
+      });
+    })
+    .catch((err) => {
+      hideLoader();
+      console.error(err);
+    });
+
+  function applyClean() {
+    const ops = [];
+    if (document.getElementById("op-strip").checked)
+      ops.push("strip_whitespace");
+    if (document.getElementById("op-dtypes").checked) ops.push("fix_dtypes");
+    if (document.getElementById("op-dupes").checked)
+      ops.push("drop_duplicates");
+    if (ops.length === 0) {
+      flash("Pick at least one cleaning option.", "error");
+      return;
+    }
+    showLoader("Cleaning…");
+    post("/api/preprocess/clean", { operations: ops });
+  }
+
+  function applyImpute() {
+    showLoader("Imputing missing values… this may take a moment");
+    post("/api/preprocess/impute", { strategies, is_train: true });
+  }
+
+  function post(url, body) {
+    fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        const el = document.getElementById("status");
+        el.classList.remove("success", "error");
+        if (d.ok) {
+          el.textContent = `Updated: ${d.shape.rows.toLocaleString()} rows × ${d.shape.cols} cols`;
+          el.classList.add("success");
+        } else {
+          el.textContent = "Error: " + (d.error || "unknown");
+          el.classList.add("error");
+        }
+      })
+      .catch((err) => {
+        hideLoader();
+        flash("Request failed: " + err, "error");
+      });
+  }
+
+  function exportPipeline() {
+    showLoader("Generating pipeline file…");
+    window.location.href = "/api/pipeline/export";
+    setTimeout(hideLoader, 800);
+  }
+
+  function previewPipeline() {
+    fetch("/api/pipeline/preview", { method: "POST" })
+      .then((r) => r.json())
+      .then((d) => {
+        const el = document.getElementById("pipeline-preview");
+        if (!d.recipe) {
+          flash("Run cleaning or imputation first.", "error");
+          return;
+        }
+        el.textContent = d.yaml;
+        el.style.display = "block";
+      });
+  }
+</script>
+{% endblock %}

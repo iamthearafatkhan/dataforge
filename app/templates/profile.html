@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Column Profile</h1>
+    <p class="page-desc">Automated analysis of every column. Each one gets a recommended imputation strategy based on its distribution and missingness.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('main.preprocess_page') }}" class="btn primary">Next: Preprocess →</a>
+  </div>
+</div>
+
+<div class="kpi-row" id="kpis">
+  <div class="kpi"><div class="kpi-label">Rows</div><div class="kpi-value" id="kpi-rows">—</div></div>
+  <div class="kpi"><div class="kpi-label">Columns</div><div class="kpi-value" id="kpi-cols">—</div></div>
+  <div class="kpi"><div class="kpi-label">Missing values</div><div class="kpi-value" id="kpi-miss">—</div></div>
+  <div class="kpi"><div class="kpi-label">Affected columns</div><div class="kpi-value" id="kpi-aff">—</div></div>
+</div>
+
+<div class="card">
+  <div class="card-head">
+    <h2>Per-column insights</h2>
+    <p class="muted">Columns with no missing values are marked clean. Others show a recommended strategy.</p>
+  </div>
+  <div id="profile-table" class="table-wrap"><div class="skeleton-rows"></div></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  showLoader("Profiling columns…");
+  fetch('/api/preprocess/profile')
+    .then(r => r.json())
+    .then(data => {
+      hideLoader();
+      document.getElementById('kpi-rows').textContent = data.shape.rows.toLocaleString();
+      document.getElementById('kpi-cols').textContent = data.shape.cols;
+      const missTotal = data.columns.reduce((a, c) => a + c.missing, 0);
+      const missCols  = data.columns.filter(c => c.missing > 0).length;
+      document.getElementById('kpi-miss').textContent = missTotal.toLocaleString();
+      document.getElementById('kpi-aff').textContent  = missCols;
+
+      let html = '<table><thead><tr>'
+        + '<th>Column</th><th>Kind</th><th>Type</th><th>Missing</th><th>Unique</th><th>Recommended</th><th>Reason</th>'
+        + '</tr></thead><tbody>';
+      data.columns.forEach(c => {
+        const clean = c.missing === 0;
+        html += `<tr class="${clean ? 'row-clean' : 'row-dirty'}">
+          <td><b>${c.name}</b></td>
+          <td><span class="pill pill-${c.kind}">${c.kind}</span></td>
+          <td><code>${c.dtype}</code></td>
+          <td>${clean ? '<span class="ok">clean</span>' : `${c.missing} <span class="muted">(${c.missing_pct}%)</span>`}</td>
+          <td>${c.unique}</td>
+          <td><code>${c.recommendation.method}</code></td>
+          <td class="muted">${c.recommendation.reason}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('profile-table').innerHTML = html;
+    })
+    .catch(e => { hideLoader(); alert("Failed to load profile: " + e); });
+</script>
+{% endblock %}
