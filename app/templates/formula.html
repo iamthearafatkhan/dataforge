@@ -70,7 +70,7 @@ content %}
 {% endblock %} {% block scripts %}
 <script>
   showLoader("Loading examples…");
-  fetch("/api/formula/examples")
+  fetch("/api/formula/examples", { cache: "no-store" })
     .then((r) => r.json())
     .then((d) => {
       hideLoader();
