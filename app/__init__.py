@@ -1,5 +1,5 @@
 import os
-from flask import Flask, session, g, jsonify, request, flash, redirect, url_for
+from flask import Flask, jsonify, request, flash, redirect, url_for
 from config import Config
 
 
@@ -24,8 +24,6 @@ def create_app():
     from app.routes.formula import formula_bp
     from app.routes.dashboard import dashboard_bp
 
-
-
     app.register_blueprint(main_bp)
     app.register_blueprint(preprocess_bp, url_prefix="/api/preprocess")
     app.register_blueprint(visualize_bp, url_prefix="/api/visualize")
@@ -46,10 +44,16 @@ def create_app():
         flash(msg, "error")
         return redirect(url_for("main.index"))
 
-    # Inject brand info into every template
+    # Global template context — available on EVERY page
     @app.context_processor
-    def inject_brand():
+    def inject_globals():
+        from app.core import storage
+        try:
+            has_data = storage.has_dataset()
+        except Exception:
+            has_data = False
         return {
+            "has_data": has_data,
             "brand": {
                 "name": "DataForge",
                 "tagline": "Clean · Understand · Export",
@@ -58,7 +62,7 @@ def create_app():
                 "website": "https://arafatkhan.vercel.app",
                 "author": "Arafat Khan",
                 "ttl_hours": app.config["SESSION_TTL_HOURS"],
-            }
+            },
         }
 
     return app

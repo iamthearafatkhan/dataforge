@@ -59,57 +59,21 @@ body {
   position: relative;
 }
 
-/* ---------- 3. Background: wavy topographic lines ---------- */
-/* Layer A — dark theme waves (default) */
+/* ---------- 3. Background: diagonal geometric ribbons ---------- */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='120' viewBox='0 0 240 120'><g fill='none' stroke='rgba(255,255,255,0.075)' stroke-width='1' stroke-linecap='round'><path d='M0 20 Q 30 8 60 20 T 120 20 T 180 20 T 240 20'/><path d='M0 60 Q 30 48 60 60 T 120 60 T 180 60 T 240 60'/><path d='M0 100 Q 30 88 60 100 T 120 100 T 180 100 T 240 100'/></g></svg>");
-  background-size: 240px 120px;
-  background-repeat: repeat;
-  -webkit-mask-image: radial-gradient(
-    ellipse 100% 75% at 50% 0%,
-    rgba(0, 0, 0, 1) 25%,
-    rgba(0, 0, 0, 0.55) 55%,
-    transparent 92%
-  );
-  mask-image: radial-gradient(
-    ellipse 100% 75% at 50% 0%,
-    rgba(0, 0, 0, 1) 25%,
-    rgba(0, 0, 0, 0.55) 55%,
-    transparent 92%
-  );
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 720' preserveAspectRatio='xMidYMid slice'><defs><linearGradient id='g1' x1='0' y1='1' x2='1' y2='0'><stop stop-color='rgba(255,255,255,0.07)' offset='0'/><stop stop-opacity='0' stop-color='rgba(255,255,255,0.07)' offset='0.66'/></linearGradient><linearGradient id='g2' x1='1' y1='1' x2='0' y2='0'><stop stop-color='rgba(255,255,255,0.07)' offset='0'/><stop stop-opacity='0' stop-color='rgba(255,255,255,0.07)' offset='0.66'/></linearGradient></defs><path d='M80 720L800 0L1157 0L437 720z' fill='url(%23g1)'/><path d='M520.2 720L1240.2 0L1420.2 0L700.2 720z' fill='url(%23g1)'/><path d='M1438 720L718 0L190 0L910 720z' fill='url(%23g2)'/><path d='M872.8 720L152.8 0L-363.2 0L356.8 720z' fill='url(%23g2)'/></svg>");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
-/* Layer A — light theme waves */
 [data-theme="light"] body::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='120' viewBox='0 0 240 120'><g fill='none' stroke='rgba(0,0,0,0.10)' stroke-width='1' stroke-linecap='round'><path d='M0 20 Q 30 8 60 20 T 120 20 T 180 20 T 240 20'/><path d='M0 60 Q 30 48 60 60 T 120 60 T 180 60 T 240 60'/><path d='M0 100 Q 30 88 60 100 T 120 100 T 180 100 T 240 100'/></g></svg>");
-}
-
-/* Layer B — drifting aurora */
-body::after {
-  content: "";
-  position: fixed;
-  top: -30vh;
-  left: 50%;
-  width: 120vw;
-  height: 90vh;
-  margin-left: -60vw;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(
-      ellipse 45% 40% at 35% 30%,
-      var(--glow) 0%,
-      transparent 60%
-    ),
-    radial-gradient(ellipse 55% 45% at 65% 20%, var(--glow) 0%, transparent 65%);
-  filter: blur(30px);
-  will-change: transform;
-  animation: auroraDrift 30s ease-in-out infinite alternate;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 720' preserveAspectRatio='xMidYMid slice'><defs><linearGradient id='g1' x1='0' y1='1' x2='1' y2='0'><stop stop-color='rgba(0,0,0,0.05)' offset='0'/><stop stop-opacity='0' stop-color='rgba(0,0,0,0.05)' offset='0.66'/></linearGradient><linearGradient id='g2' x1='1' y1='1' x2='0' y2='0'><stop stop-color='rgba(0,0,0,0.05)' offset='0'/><stop stop-opacity='0' stop-color='rgba(0,0,0,0.05)' offset='0.66'/></linearGradient></defs><path d='M80 720L800 0L1157 0L437 720z' fill='url(%23g1)'/><path d='M520.2 720L1240.2 0L1420.2 0L700.2 720z' fill='url(%23g1)'/><path d='M1438 720L718 0L190 0L910 720z' fill='url(%23g2)'/><path d='M872.8 720L152.8 0L-363.2 0L356.8 720z' fill='url(%23g2)'/></svg>");
 }
 @keyframes auroraDrift {
   0% {

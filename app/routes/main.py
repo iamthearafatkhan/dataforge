@@ -6,7 +6,6 @@ main_bp = Blueprint("main", __name__)
 
 
 def _expire_guard():
-    """Return a redirect if the session has no live data, else None."""
     try:
         if not storage.has_dataset():
             return redirect(url_for("main.index"))
@@ -19,7 +18,7 @@ def _expire_guard():
 
 @main_bp.route("/")
 def index():
-    return render_template("index.html", has_data=storage.has_dataset())
+    return render_template("index.html")
 
 
 @main_bp.route("/upload", methods=["POST"])
@@ -28,6 +27,7 @@ def upload():
     if not f or f.filename == "":
         flash("Please choose a file.", "error")
         return redirect(url_for("main.index"))
+
     name = f.filename.lower()
     try:
         if name.endswith(".csv"):
@@ -42,9 +42,11 @@ def upload():
     except Exception as e:
         flash(f"Could not read file: {e}", "error")
         return redirect(url_for("main.index"))
+
     if df.empty:
         flash("File is empty.", "error")
         return redirect(url_for("main.index"))
+
     session.pop("fitted", None)
     storage.save_raw(df)
     flash(f"Loaded {len(df):,} rows × {len(df.columns)} columns.", "success")
@@ -69,10 +71,11 @@ def visualize_page():
     return g or render_template("visualize.html")
 
 
-@main_bp.route("/export")
-def export_page():
+@main_bp.route("/sql")
+def sql_page():
     g = _expire_guard()
-    return g or render_template("export.html")
+    return g or render_template("sql.html")
+
 
 @main_bp.route("/pivot")
 def pivot_page():
@@ -92,14 +95,15 @@ def dashboard_page():
     return g or render_template("dashboard.html")
 
 
+@main_bp.route("/export")
+def export_page():
+    g = _expire_guard()
+    return g or render_template("export.html")
+
+
 @main_bp.route("/reset", methods=["POST"])
 def reset():
     storage.reset_working()
     session.pop("fitted", None)
     flash("Reset to original dataset.", "success")
     return redirect(url_for("main.profile_page"))
-
-@main_bp.route("/sql")
-def sql_page():
-    g = _expire_guard()
-    return g or render_template("sql.html")

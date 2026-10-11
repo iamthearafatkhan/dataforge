@@ -6,7 +6,13 @@ formula_bp = Blueprint("formula", __name__)
 
 @formula_bp.get("/examples")
 def examples():
-    return jsonify({"ok": True, "examples": formula.EXAMPLES})
+    try:
+        df = storage.load_working()
+        return jsonify({"ok": True, "examples": formula.generate_examples(df)})
+    except FileNotFoundError:
+        return jsonify({"ok": True, "examples": []})
+    except Exception:
+        return jsonify({"ok": True, "examples": []})
 
 
 @formula_bp.post("/preview")
