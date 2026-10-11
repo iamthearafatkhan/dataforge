@@ -5,8 +5,8 @@
   <div>
     <h1 class="page-title">Pivot Table</h1>
     <p class="page-desc">
-      Choose row fields, column fields, values, and aggregations. Add margins
-      for totals.
+      Click columns to toggle. Row and column fields are optional — value and
+      aggregation are required.
     </p>
   </div>
   <div class="page-actions">
@@ -23,27 +23,53 @@
   <div class="card-head"><h2>Configure</h2></div>
   <div class="pivot-grid">
     <div class="pivot-field">
-      <label>Row fields</label>
-      <select id="p-row" multiple size="6"></select>
-      <p class="muted">Group data by these columns.</p>
+      <div class="pivot-field-head">
+        <label>Row fields</label>
+        <button class="clear-btn" data-no-loader onclick="clearSection('row')">
+          Clear
+        </button>
+      </div>
+      <div id="picker-row" class="field-picker"></div>
+      <p class="muted">
+        Group data by these columns. Optional if column fields are set.
+      </p>
     </div>
+
     <div class="pivot-field">
-      <label>Column fields <span class="muted">(optional)</span></label>
-      <select id="p-col" multiple size="6"></select>
+      <div class="pivot-field-head">
+        <label>Column fields <span class="muted">(optional)</span></label>
+        <button class="clear-btn" data-no-loader onclick="clearSection('col')">
+          Clear
+        </button>
+      </div>
+      <div id="picker-col" class="field-picker"></div>
       <p class="muted">Split columns horizontally.</p>
     </div>
+
     <div class="pivot-field">
-      <label>Value fields</label>
-      <select id="p-val" multiple size="6"></select>
-      <p class="muted">Numerical columns to aggregate.</p>
+      <div class="pivot-field-head">
+        <label>Value fields</label>
+        <button class="clear-btn" data-no-loader onclick="clearSection('val')">
+          Clear
+        </button>
+      </div>
+      <div id="picker-val" class="field-picker"></div>
+      <p class="muted">Columns to aggregate. At least one required.</p>
     </div>
+
     <div class="pivot-field">
-      <label>Aggregations</label>
-      <select id="p-agg" multiple size="6"></select>
-      <p class="muted">Multiple selections produce cross-aggregations.</p>
+      <div class="pivot-field-head">
+        <label>Aggregations</label>
+        <button class="clear-btn" data-no-loader onclick="clearSection('agg')">
+          Clear
+        </button>
+      </div>
+      <div id="picker-agg" class="field-picker"></div>
+      <p class="muted">Multiple produce cross-aggregations.</p>
     </div>
   </div>
-  <div class="toggle-row" style="margin-top: 14px">
+
+  <div class="toggle-row" style="margin-top: 18px">
     <label class="switch">
       <input type="checkbox" id="p-margins" />
       <span class="slider"></span>
@@ -69,7 +95,8 @@
 
 {% endblock %} {% block scripts %}
 <script>
-  let SUGGESTED = {};
+  const STATE = { row: [], col: [], val: [], agg: [] };
+  let LAST_BODY = null;
 
   showLoader("Loading columns…");
   fetch("/api/pivot/suggest")
@@ -80,44 +107,59 @@
         flash(d.error, "error");
         return;
       }
-      SUGGESTED = d.suggested;
-      const opts = d.columns
-        .map((c) => `<option value="${c}">${c}</option>`)
-        .join("");
-      ["p-row", "p-col", "p-val"].forEach(
-        (id) => (document.getElementById(id).innerHTML = opts),
-      );
-      document.getElementById("p-agg").innerHTML = d.aggfuncs
-        .map((a) => `<option value="${a}">${a}</option>`)
-        .join("");
-      SUGGESTED.rows.forEach((c) => preselect("p-row", c));
-      SUGGESTED.cols.forEach((c) => preselect("p-col", c));
-      SUGGESTED.values.forEach((c) => preselect("p-val", c));
-      SUGGESTED.aggfuncs.forEach((c) => preselect("p-agg", c));
+
+      STATE.row = [...(d.suggested.rows || [])];
+      STATE.col = [...(d.suggested.cols || [])];
+      STATE.val = [...(d.suggested.values || [])];
+      STATE.agg = [...(d.suggested.aggfuncs || ["mean"])];
+
+      renderSection("row", d.columns);
+      renderSection("col", d.columns);
+      renderSection("val", d.columns);
+      renderSection("agg", d.aggfuncs);
     });
 
-  function preselect(id, val) {
-    const sel = document.getElementById(id);
-    [...sel.options].forEach((o) => {
-      if (o.value === val) o.selected = true;
-    });
+  function renderSection(key, options) {
+    const el = document.getElementById(`picker-${key}`);
+    el.innerHTML = options
+      .map((opt) => {
+        const sel = STATE[key].includes(opt);
+        return `<button type="button" class="field-chip ${sel ? "selected" : ""}"
+                       data-key="${key}" data-value="${escapeAttr(opt)}">
+                ${escapeHTML(opt)}
+              </button>`;
+      })
+      .join("");
   }
 
-  function getMulti(id) {
-    return [...document.getElementById(id).selectedOptions].map((o) => o.value);
+  document.addEventListener("click", (e) => {
+    const chip = e.target.closest(".field-chip");
+    if (!chip) return;
+    const key = chip.dataset.key;
+    const value = chip.dataset.value;
+    const arr = STATE[key];
+    const idx = arr.indexOf(value);
+    if (idx >= 0) arr.splice(idx, 1);
+    else arr.push(value);
+    chip.classList.toggle("selected");
+  });
+
+  function clearSection(key) {
+    STATE[key] = [];
+    document
+      .querySelectorAll(`#picker-${key} .field-chip`)
+      .forEach((c) => c.classList.remove("selected"));
   }
 
   function buildBody() {
     return {
-      rows: getMulti("p-row"),
-      cols: getMulti("p-col"),
-      values: getMulti("p-val"),
-      aggfuncs: getMulti("p-agg"),
+      rows: STATE.row,
+      cols: STATE.col,
+      values: STATE.val,
+      aggfuncs: STATE.agg,
       margins: document.getElementById("p-margins").checked,
     };
   }
-
-  let LAST = null;
 
   function runPivot() {
     const body = buildBody();
@@ -135,7 +177,7 @@
     }
 
     showLoader("Building pivot…");
-    LAST = body;
+    LAST_BODY = body;
     fetch("/api/pivot/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -150,7 +192,7 @@
         }
         renderPivot(d.result);
       })
-      .catch((e) => {
+      .catch(() => {
         hideLoader();
         flash("Request failed", "error");
       });
@@ -166,7 +208,7 @@
     }
     const thead =
       "<thead><tr>" +
-      res.columns.map((c) => `<th>${esc(c)}</th>`).join("") +
+      res.columns.map((c) => `<th>${escapeHTML(c)}</th>`).join("") +
       "</tr></thead>";
     const tbody =
       "<tbody>" +
@@ -177,7 +219,7 @@
             r
               .map(
                 (v) =>
-                  `<td>${v === null ? '<span class="null-cell">—</span>' : esc(String(v))}</td>`,
+                  `<td>${v === null ? '<span class="null-cell">—</span>' : escapeHTML(String(v))}</td>`,
               )
               .join("") +
             "</tr>",
@@ -187,29 +229,15 @@
     wrap.innerHTML = `<table class="sql-table">${thead}${tbody}</table>`;
   }
 
-  function esc(s) {
-    return String(s).replace(
-      /[&<>"']/g,
-      (m) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        })[m],
-    );
-  }
-
   function exportPivot() {
-    if (!LAST) {
+    if (!LAST_BODY) {
       flash("Build a pivot first.", "error");
       return;
     }
     fetch("/api/pivot/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(LAST),
+      body: JSON.stringify(LAST_BODY),
     })
       .then((r) => {
         if (!r.ok)
@@ -227,6 +255,23 @@
         URL.revokeObjectURL(url);
       })
       .catch((e) => flash(e.message, "error"));
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(
+      /[&<>"']/g,
+      (m) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[m],
+    );
+  }
+  function escapeAttr(s) {
+    return String(s).replace(/"/g, "&quot;");
   }
 </script>
 {% endblock %}

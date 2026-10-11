@@ -1327,3 +1327,71 @@ kbd {
   font-style: italic;
   font-size: 12px;
 }
+
+/* ---------- Chip pickers ---------- */
+.pivot-field-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.pivot-field-head label {
+  font-weight: 600;
+  font-size: 13px;
+  margin: 0;
+}
+.clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.clear-btn:hover {
+  color: var(--text);
+  background: var(--bg-elev-2);
+}
+
+.field-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 120px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev-2);
+  align-content: flex-start;
+}
+.field-chip {
+  padding: 5px 11px !important;
+  background: var(--bg-elev) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  border-radius: 999px !important;
+  cursor: pointer;
+  transition: all var(--t);
+  box-shadow: none !important;
+  transform: none !important;
+  line-height: 1.3;
+}
+.field-chip:hover {
+  color: var(--text) !important;
+  border-color: color-mix(in srgb, var(--text) 40%, var(--border)) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.field-chip.selected {
+  background: var(--accent) !important;
+  color: var(--accent-contrast) !important;
+  border-color: var(--accent) !important;
+}

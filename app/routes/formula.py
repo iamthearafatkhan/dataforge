@@ -8,11 +8,14 @@ formula_bp = Blueprint("formula", __name__)
 def examples():
     try:
         df = storage.load_working()
-        return jsonify({"ok": True, "examples": formula.generate_examples(df)})
+        ex = formula.generate_examples(df)
+        return jsonify({"ok": True, "examples": ex, "count": len(ex)})
     except FileNotFoundError:
-        return jsonify({"ok": True, "examples": []})
-    except Exception:
-        return jsonify({"ok": True, "examples": []})
+        return jsonify({"ok": False, "error": "No dataset loaded. Upload a file first."}), 410
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @formula_bp.post("/preview")
@@ -20,13 +23,17 @@ def preview():
     try:
         body = request.get_json(silent=True) or {}
         expr = body.get("formula", "")
+        if not expr.strip():
+            return jsonify({"ok": False, "error": "Formula is empty."}), 400
+
         df = storage.load_working()
         info, _ = formula.apply_formula(df, expr)
         return jsonify({"ok": True, "result": info})
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -36,6 +43,9 @@ def apply():
         body = request.get_json(silent=True) or {}
         expr = body.get("formula", "")
         target = body.get("target", "").strip()
+
+        if not expr.strip():
+            return jsonify({"ok": False, "error": "Formula is empty."}), 400
         if not target:
             return jsonify({"ok": False, "error": "New column name is required."}), 400
 
@@ -46,5 +56,6 @@ def apply():
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
     except Exception as e:
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500

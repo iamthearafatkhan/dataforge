@@ -74,18 +74,31 @@ content %}
     .then((r) => r.json())
     .then((d) => {
       hideLoader();
-      if (!d.ok) return;
       const wrap = document.getElementById("examples-list");
+      if (!d.ok) {
+        wrap.innerHTML = `<p class="muted">Could not load examples: ${d.error || "unknown"}</p>`;
+        return;
+      }
+      if (!d.examples.length) {
+        wrap.innerHTML =
+          '<p class="muted">No examples available for these columns.</p>';
+        return;
+      }
       wrap.innerHTML = d.examples
         .map(
           (ex, i) =>
             `<button class="suggestion" data-no-loader onclick="loadExample(${i})">
            <b>${ex.label}</b>
-           <span class="muted" style="display:block; font-family: ui-monospace, monospace; font-size: 12px; margin-top: 3px;">${ex.formula}</span>
+           <span class="muted" style="display:block; font-family:ui-monospace,monospace; font-size:12px; margin-top:3px;">${ex.formula}</span>
          </button>`,
         )
         .join("");
       window.__examples = d.examples;
+    })
+    .catch((e) => {
+      hideLoader();
+      document.getElementById("examples-list").innerHTML =
+        `<p class="muted">Failed to load examples. ${e}</p>`;
     });
 
   function loadExample(i) {
