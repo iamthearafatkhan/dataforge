@@ -161,15 +161,32 @@ def normality(df, col):
     }
 
 
+def _looks_like_id(df, col):
+    """Detect ID-like columns: unique integer values, or name contains 'id'."""
+    if not pd.api.types.is_numeric_dtype(df[col]):
+        return False
+    # Every value unique AND name contains id
+    if "id" in col.lower():
+        return True
+    # Sequential integers with no gaps
+    try:
+        v = df[col].dropna()
+        if len(v) == v.nunique() and v.dtype.kind in "iu":
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def suggest_tests(df):
     """Generate a list of suggested tests based on column types."""
-    numeric = df.select_dtypes(include="number").columns.tolist()
+    numeric = [c for c in df.select_dtypes(include="number").columns
+               if not _looks_like_id(df, c)]
     categorical = df.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
     low_card_cat = [c for c in categorical if 2 <= df[c].nunique(dropna=True) <= 15]
 
     suggestions = []
 
-    # Correlations between the first numeric pairs
     if len(numeric) >= 2:
         for i in range(min(3, len(numeric) - 1)):
             suggestions.append({
@@ -178,7 +195,6 @@ def suggest_tests(df):
                 "params": {"col_a": numeric[i], "col_b": numeric[i+1], "method": "pearson"},
             })
 
-    # t-tests: numeric by a 2-value categorical
     two_val_cat = [c for c in low_card_cat if df[c].nunique(dropna=True) == 2]
     if numeric and two_val_cat:
         suggestions.append({
@@ -187,7 +203,6 @@ def suggest_tests(df):
             "params": {"numeric_col": numeric[0], "group_col": two_val_cat[0]},
         })
 
-    # ANOVA: numeric by 3+ value categorical
     multi_cat = [c for c in low_card_cat if df[c].nunique(dropna=True) >= 3]
     if numeric and multi_cat:
         suggestions.append({
@@ -196,7 +211,6 @@ def suggest_tests(df):
             "params": {"numeric_col": numeric[0], "group_col": multi_cat[0]},
         })
 
-    # Chi-square: two categoricals
     if len(low_card_cat) >= 2:
         suggestions.append({
             "kind": "chi_square",
@@ -204,7 +218,6 @@ def suggest_tests(df):
             "params": {"col_a": low_card_cat[0], "col_b": low_card_cat[1]},
         })
 
-    # Normality on first numeric
     if numeric:
         suggestions.append({
             "kind": "normality",
