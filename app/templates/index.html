@@ -9,16 +9,16 @@
   </div>
 
   <p class="eyebrow fade-up">
-    Data preprocessing · Visualization · SQL · Export
+    Data preprocessing · Visualization · SQL · Statistics · ML · Export
   </p>
   <h1 class="hero-title fade-up delay-1">
     <span class="typewriter" id="typed">Clean. Understand. Export.</span>
     <span class="cursor">|</span>
   </h1>
   <p class="hero-sub fade-up delay-2">
-    Upload a CSV, Excel, or JSON file. Profile it. Impute missing values per
-    column. Visualize interactively. Query with SQL. Download in the format you
-    need.
+    Upload a CSV, Excel, or JSON file. Profile every column. Impute missing
+    values per feature. Visualize interactively. Query with SQL. Run statistical
+    tests. Train a baseline ML model. Export in the format you need.
   </p>
 
   {% if has_data %}
@@ -38,6 +38,8 @@
       <a class="btn" href="{{ url_for('main.preprocess_page') }}">Preprocess</a>
       <a class="btn" href="{{ url_for('main.visualize_page') }}">Visualize</a>
       <a class="btn" href="{{ url_for('main.sql_page') }}">SQL</a>
+      <a class="btn" href="{{ url_for('main.stats_page') }}">Stats</a>
+      <a class="btn" href="{{ url_for('main.ml_page') }}">ML</a>
       <a class="btn" href="{{ url_for('main.export_page') }}">Export</a>
     </div>
   </div>
@@ -146,8 +148,12 @@
       ><span>Query your data with DuckDB — no setup required</span>
     </div>
     <div class="step">
-      <span class="step-num">5</span><b>Export</b
-      ><span>CSV · Excel · JSON · XML — ready to use</span>
+      <span class="step-num">5</span><b>Pivot &amp; Formulas</b
+      ><span>Excel-style pivots and computed columns</span>
+    </div>
+    <div class="step">
+      <span class="step-num">6</span><b>Stats &amp; ML</b
+      ><span>Hypothesis tests and baseline models</span>
     </div>
   </div>
 
@@ -258,10 +264,49 @@
   <details class="faq-item">
     <summary>Can I pivot data like in Excel?</summary>
     <p>
-      Coming next. The Pivot page will let you pick row columns, column columns,
-      value columns, and an aggregation — one-click pivot tables. In the
-      meantime, the SQL page supports pivots via <code>GROUP BY</code> and
-      conditional aggregation.
+      Yes — click <b>Pivot</b> in the top navigation. Pick row fields, column
+      fields, value fields, and one or more aggregations (sum, mean, median,
+      count, min, max, std, nunique). Add margins for totals. Multiple
+      aggregations produce cross-aggregated columns. Export the pivot result as
+      CSV.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Can I create new columns with formulas?</summary>
+    <p>
+      Yes — click <b>Formula</b> in the top navigation. Write Excel-style
+      formulas starting with <code>=</code>. Reference columns by name and use
+      familiar functions like <code>IF</code>, <code>ROUND</code>,
+      <code>UPPER</code>, <code>CONCAT</code>, <code>YEAR</code>,
+      <code>COALESCE</code>. Examples adapt to your actual columns — click any
+      suggestion to load it into the editor, preview the result, and add it as a
+      new column.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>What statistical tests can I run?</summary>
+    <p>
+      Click <b>Stats</b> in the top navigation. You can run Pearson, Spearman,
+      and Kendall correlations; Welch's t-test for two groups; one-way ANOVA for
+      three or more; chi-square for categorical independence; and Shapiro-Wilk
+      for normality. Each result shows the test statistic, p-value, effect size
+      (Cohen's d, eta squared, or Cramér's V), and a plain-English
+      interpretation of the p-value.
+    </p>
+  </details>
+
+  <details class="faq-item">
+    <summary>Can I train a machine learning model here?</summary>
+    <p>
+      Yes — click <b>ML</b> in the top navigation. Pick a target column and
+      features, choose a model (logistic regression, decision tree, random
+      forest, or gradient boosting for classification; linear regression, ridge,
+      decision tree, or random forest for regression), and get accuracy,
+      precision, recall, F1, and ROC AUC (or RMSE, MAE, R² for regression),
+      cross-validation scores, feature importances, and a confusion matrix. It
+      is meant for quick baselines, not production models.
     </p>
   </details>
 
@@ -302,7 +347,7 @@
     "Clean. Understand. Export.",
     "Profile every column.",
     "Impute smarter, not harder.",
-    "Query with SQL. Ship clean data.",
+    "Query with SQL. Train ML. Ship clean data.",
   ];
   let ti = 0,
     ci = 0,
