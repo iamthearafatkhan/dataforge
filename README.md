@@ -327,13 +327,3 @@ MIT — free to use, modify, and distribute.
 | **Security section** | Added formula sandbox details |
 
 ---
-
-## Save and push
-
-Save as `README.md` in `D:\dataforge\README.md` (overwrite the existing file), then:
-
-```bash
-cd /d/dataforge
-git add README.md
-git commit -m "Update README with stats, ML, and clean formatting"
-git push
