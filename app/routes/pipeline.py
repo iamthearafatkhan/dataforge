@@ -13,12 +13,18 @@ def export_pipeline():
         recipe = session.get("last_recipe")
         if not recipe:
             return jsonify({"error": "Run preprocessing first — no recipe to export."}), 400
+
         yml = pipeline.to_yaml(recipe)
+
+        # Build dataforge_<original>.yaml
+        from app.core import exporter
+        filename = exporter.build_output_filename("yaml")
+
         return send_file(
             io.BytesIO(yml.encode("utf-8")),
             mimetype="application/x-yaml",
             as_attachment=True,
-            download_name="dataforge_pipeline.yaml",
+            download_name=filename,
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
