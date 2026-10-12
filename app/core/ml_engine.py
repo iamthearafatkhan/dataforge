@@ -189,22 +189,28 @@ def suggest_ml(df):
     numeric = df.select_dtypes(include="number").columns.tolist()
     categorical = df.select_dtypes(include=["object", "category", "bool"]).columns.tolist()
 
-    # Guess target: last column, or first categorical with low cardinality
+    # Usable categoricals for features: low-cardinality only
+    usable_cat = [c for c in categorical if 2 <= df[c].nunique(dropna=True) <= 30]
+
+    # Guess target: first categorical with 2-10 unique values, else last numeric
     target = None
-    for c in df.columns:
-        if c in categorical and 2 <= df[c].nunique(dropna=True) <= 20:
+    for c in categorical:
+        n = df[c].nunique(dropna=True)
+        if 2 <= n <= 10:
             target = c
             break
     if target is None and numeric:
         target = numeric[-1]
 
-    features = [c for c in df.columns if c != target][:15]
+    # Suggested features: numeric + low-cardinality categoricals, target excluded
+    features = [c for c in (numeric + usable_cat) if c != target][:15]
 
     return {
         "target_guess": target,
         "features_guess": features,
         "numeric": numeric,
         "categorical": categorical,
+        "usable_categorical": usable_cat,
         "classifiers": list(CLASSIFIERS.keys()),
         "regressors": list(REGRESSORS.keys()),
     }

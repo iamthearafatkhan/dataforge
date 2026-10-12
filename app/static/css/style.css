@@ -1395,3 +1395,11 @@ kbd {
   color: var(--accent-contrast) !important;
   border-color: var(--accent) !important;
 }
+
+.field-chip.chip-disabled,
+.field-chip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  text-decoration: line-through;
+}

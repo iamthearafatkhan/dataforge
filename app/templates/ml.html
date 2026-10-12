@@ -57,6 +57,8 @@ content %}
 {% endblock %} {% block scripts %}
 <script>
   let STATE = { features: [] };
+  let ALL_COLS = [];
+  let USABLE_CAT = [];
 
   showLoader("Loading columns…");
   fetch("/api/ml/suggest")
@@ -67,14 +69,15 @@ content %}
         flash(d.error, "error");
         return;
       }
+
+      USABLE_CAT = d.usable_categorical || [];
+      ALL_COLS = [...d.numeric, ...d.categorical];
+
       const targetSel = document.getElementById("ml-target");
-      const allCols = [...d.numeric, ...d.categorical];
-      targetSel.innerHTML = allCols
-        .map(
-          (c) =>
-            `<option value="${c}" ${c === d.target_guess ? "selected" : ""}>${c}</option>`,
-        )
-        .join("");
+      targetSel.innerHTML = ALL_COLS.map(
+        (c) =>
+          `<option value="${c}" ${c === d.target_guess ? "selected" : ""}>${c}</option>`,
+      ).join("");
 
       const modelSel = document.getElementById("ml-model");
       const models = [...d.classifiers, ...d.regressors];
@@ -85,20 +88,54 @@ content %}
         )
         .join("");
 
-      const featurePick = document.getElementById("feature-picker");
-      STATE.features = [...d.features_guess];
-      featurePick.innerHTML = allCols
-        .map(
-          (c) =>
-            `<button type="button" class="field-chip ${STATE.features.includes(c) ? "selected" : ""}"
-               data-value="${c}">${c}</button>`,
-        )
-        .join("");
+      STATE.features = [...(d.features_guess || [])];
+      renderFeatures();
+
+      // When target changes, remove it from selected features
+      targetSel.addEventListener("change", () => {
+        const t = targetSel.value;
+        const i = STATE.features.indexOf(t);
+        if (i >= 0) STATE.features.splice(i, 1);
+        renderFeatures();
+      });
     });
+
+  function renderFeatures() {
+    const target = document.getElementById("ml-target").value;
+    const pick = document.getElementById("feature-picker");
+
+    pick.innerHTML = ALL_COLS.map((c) => {
+      const isTarget = c === target;
+      const isSelected = STATE.features.includes(c);
+      const isHighCard =
+        !USABLE_CAT.includes(c) &&
+        ALL_COLS.indexOf(c) >=
+          ALL_COLS.length - (ALL_COLS.length - USABLE_CAT.length);
+      // Simpler: use the backend's classification
+      const classes = [
+        "field-chip",
+        isSelected && !isTarget ? "selected" : "",
+        isTarget ? "chip-disabled" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const title = isTarget ? "This is the target column" : "";
+      return `<button type="button" class="${classes}" data-value="${c}" title="${title}"
+                    ${isTarget ? "disabled" : ""}>${c}</button>`;
+    }).join("");
+  }
+
+  function isNumeric(col) {
+    const chip = document.querySelector(
+      `#feature-picker .field-chip[data-value="${col}"]`,
+    );
+    // fallback: check by looking for the column in a cached list
+    return true; // assume numeric unless we know otherwise
+  }
 
   document.addEventListener("click", (e) => {
     const chip = e.target.closest("#feature-picker .field-chip");
-    if (!chip) return;
+    if (!chip || chip.disabled) return;
     const v = chip.dataset.value;
     const i = STATE.features.indexOf(v);
     if (i >= 0) STATE.features.splice(i, 1);
@@ -107,12 +144,15 @@ content %}
   });
 
   function selectAllFeatures() {
+    const target = document.getElementById("ml-target").value;
     document.querySelectorAll("#feature-picker .field-chip").forEach((c) => {
+      if (c.disabled) return;
       if (!STATE.features.includes(c.dataset.value))
         STATE.features.push(c.dataset.value);
       c.classList.add("selected");
     });
   }
+
   function clearFeatures() {
     STATE.features = [];
     document
@@ -133,6 +173,10 @@ content %}
     }
     if (!STATE.features.length) {
       flash("Pick at least one feature.", "error");
+      return;
+    }
+    if (STATE.features.includes(target)) {
+      flash("Target cannot also be a feature. Deselect it first.", "error");
       return;
     }
 
@@ -175,7 +219,7 @@ content %}
     html += "</div>";
 
     if (r.extras.cv_mean != null) {
-      html += `<p class="muted">Cross-validation ${r.task === "classification" ? "accuracy" : "R²"}: <b>${r.extras.cv_mean.toFixed(4)}</b> ± ${(r.extras.cv_std || 0).toFixed(4)} across 5 folds</p>`;
+      html += `<p class="muted">Cross-validation ${r.task === "classification" ? "accuracy" : "R²"}: <b>${r.extras.cv_mean.toFixed(4)}</b> ± ${(r.extras.cv_std || 0).toFixed(4)} across folds</p>`;
     }
 
     if (r.extras.feature_importance && r.extras.feature_importance.length) {
