@@ -2,15 +2,22 @@
 
 **Clean · Understand · Query · Export**
 
-A web-based data workbench for analysts, data scientists, and anyone who works with tabular data. Upload a CSV, Excel, or JSON file and go from raw and messy to clean and queryable — without writing a line of code.
+A web-based data workbench for analysts, data scientists, and anyone who works
+with tabular data. Upload a CSV, Excel, or JSON file and go from raw and messy
+to clean and queryable — without writing a line of code.
 
-**Live demo:** https://dataforge-studio.onrender.com
+**Live demo:** [dataforge-studio.onrender.com](https://dataforge-studio.onrender.com)
 
 ---
 
 ## Why this exists
 
-Data professionals spend 60–80% of their time on data preparation. Existing tools force a choice: use a Python library and write code, or use a GUI and give up control. DataForge is the middle path — a browser tool with per-column control, statistical imputation methods normally reserved for code, SQL querying, pivot tables, formulas, and one-click export.
+Data professionals spend 60–80% of their time on data preparation. Existing
+tools force a choice: use a Python library and write code, or use a GUI and
+give up control. DataForge is the middle path — a browser tool with
+per-column control, statistical imputation methods normally reserved for code,
+SQL querying, pivot tables, formulas, statistical tests, and baseline ML
+training, all without installation.
 
 Built as a portfolio project, engineered for real use.
 
@@ -19,10 +26,14 @@ Built as a portfolio project, engineered for real use.
 ## Features
 
 ### Intelligent profiling
-Every column is analyzed on upload: data type, missingness percentage, cardinality, distribution skew, and correlation with other columns. Each column gets a recommended imputation strategy with a plain-English explanation — no black boxes.
+Every column is analyzed on upload: data type, missingness percentage,
+cardinality, distribution skew, and correlation with other columns. Each
+column gets a recommended imputation strategy with a plain-English
+explanation — no black boxes.
 
 ### Per-feature imputation
-Unlike tools that apply one global strategy, DataForge lets you pick the method **per column**:
+Unlike tools that apply one global strategy, DataForge lets you pick the
+method **per column**:
 
 | Method | When to use |
 |---|---|
@@ -54,7 +65,9 @@ Built on Plotly — every chart is fully interactive and downloadable as PNG.
 - Correlation heatmap
 
 ### SQL Studio
-Write SQL directly against your uploaded dataset. The table is named `df`. Powered by [DuckDB](https://duckdb.org/), the modern in-process analytical database.
+Write SQL directly against your uploaded dataset. The table is named `df`.
+Powered by [DuckDB](https://duckdb.org/), the modern in-process analytical
+database.
 
 ```sql
 SELECT Sex, AVG(Age) AS avg_age, COUNT(*) AS n
@@ -89,6 +102,42 @@ Compute new columns with Excel-style formulas. Type =, reference columns by name
 * Supported functions: IF, ABS, ROUND, SQRT, LOG, EXP, UPPER, LOWER, TRIM, LEN, CONCAT, COALESCE, LEFT, RIGHT, REPLACE, YEAR, MONTH, DAY, ISBLANK, TODAY, NOW.
 - Examples adapt to your actual columns — no hardcoded references.
 
+### Statistical tests
+Run hypothesis tests directly on the uploaded dataset. Suggestions adapt to
+the actual column types.
+
+> Pearson / Spearman / Kendall correlation between two numeric columns
+> Welch's t-test for a numeric column across two groups
+> One-way ANOVA for a numeric column across three or more groups
+> Chi-square test of independence between two categorical columns
+> Shapiro-Wilk normality test on a single numeric column
+
+Each result shows the test statistic, p-value, effect size (Cohen's d, eta
+squared, or Cramér's V), and a plain-English interpretation of the p-value.
+ID-like columns are automatically excluded from test suggestions.
+
+
+### ML Studio
+Train a quick baseline model in the browser. Pick a target column, choose
+features, and inspect performance.
+
+>> Classification models: logistic regression, decision tree, random forest,
+gradient boosting
+>> Regression models: linear regression, ridge, decision tree, random forest
+
+*Metrics reported:*
+>> Classification: accuracy, precision, recall, F1, ROC AUC, confusion matrix
+>> Regression: RMSE, MAE, R²
+
+### Additional output:
+> 5-fold cross-validation score with standard deviation
+> Feature importances (or coefficients for linear models)
+> Train / test split size
+
+The target column is locked in the feature picker to prevent accidental
+inclusion. This is a baseline tool — not a replacement for proper ML
+pipelines.
+
 ### Dashboard templates
 * One-click dashboards for common industries. Columns are auto-detected.
 * Sales — revenue distribution, top products, regional performance
@@ -96,11 +145,11 @@ Compute new columns with Excel-style formulas. Type =, reference columns by name
 * Finance — income, expenses, category-wise totals
 * Marketing — campaign metrics, conversion, channel performance
 * Quality — defects, yield, process variation
-* Each chart is downloadable as PNG.
+Each chart is downloadable as PNG.
 
 ---
-Pipeline export & replay
-Save your entire preprocessing recipe as a YAML file. On new data, upload the YAML plus a fresh CSV — DataForge re-applies the exact same transformations using the fitted parameters from the original run, not re-fitted values. This is how production ML pipelines maintain train/test consistency and avoid data leakage
+### Pipeline export & replay
+Save your entire preprocessing recipe as a YAML file. On new data, upload the YAML plus a fresh CSV — DataForge re-applies the exact same transformations using the fitted parameters from the original run, not re-fitted values. This is how production ML pipelines maintain train/test consistency and avoid data leakage.
 ```
 version: "1.0"
 tool: DataForge
@@ -117,18 +166,21 @@ imputation:
 ```
 
 ### Multi-format export
-CSV — universal
-Excel (.xlsx) — for stakeholders and BI tools
-JSON — for APIs and web apps
-XML — for legacy integrations
+Exports preserve the original filename: uploading titanic.csv produces
+dataforge_titanic.csv on download.
+
+- CSV — universal
+- Excel (.xlsx) — for stakeholders and BI tools
+- JSON — for APIs and web apps
+- XML — for legacy integrations
 
 ### Product polish
-Dark and light themes (persisted across reloads)
-Animated landing page with typewriter effect
-Global loading indicator
-24-hour session retention with automatic cleanup
-Per-session file isolation — never shared between users
-FAQ section with self-serve answers
+> Dark and light themes (persisted across reloads)
+> Animated landing page with typewriter effect
+> Global loading indicator
+> 24-hour session retention with automatic cleanup
+> Per-session file isolation — never shared between users
+> FAQ section with self-serve answers
 
 
 ## Tech Stack
@@ -138,7 +190,8 @@ FAQ section with self-serve answers
 | **Layer** | **Technology** | 
 | **Web framework** | Flask 3.1 | 
 | **Data manipulation** | pandas 2.2 | 
-| **Machine learning** | scikit-learn 1.6 (KNN, Iterative / MICE) | 
+| **Machine learning** | scikit-learn 1.6 (KNN, Iterative / MICE, classifiers, regressors) | 
+| **Statistical tests** | SciPy 1.14 | 
 | **SQL engine** | DuckDB 1.1 | 
 | **Visualization** | Plotly 5.24 | 
 | **Storage format** | Apache Parquet (via pyarrow) | 
@@ -153,36 +206,40 @@ FAQ section with self-serve answers
 ```
 dataforge/
 ├── app/
-│   ├── __init__.py             # App factory, blueprint registration
+│   ├── __init__.py              # App factory, blueprint registration
 │   ├── core/
-│   │   ├── storage.py          # Per-session Parquet persistence
-│   │   ├── profiler.py         # Column profiling + recommendations
-│   │   ├── imputer.py          # Per-feature imputation engine
-│   │   ├── cleaner.py          # Whitespace, dtype, dedup operations
-│   │   ├── visualizer.py       # Plotly chart builders
-│   │   ├── exporter.py         # CSV / Excel / JSON / XML writers
-│   │   ├── sql_engine.py       # DuckDB wrapper + query sandboxing
-│   │   ├── pivot.py            # Pivot table builder
-│   │   ├── formula.py          # Excel-style formula evaluator
-│   │   ├── dashboard.py        # Industry dashboard templates
-│   │   ├── pipeline.py         # YAML pipeline serialization
-│   │   └── cleanup.py          # Expired session purging
+│   │   ├── storage.py           # Per-session Parquet persistence
+│   │   ├── profiler.py          # Column profiling + recommendations
+│   │   ├── imputer.py           # Per-feature imputation engine
+│   │   ├── cleaner.py           # Whitespace, dtype, dedup operations
+│   │   ├── visualizer.py        # Plotly chart builders
+│   │   ├── exporter.py          # CSV / Excel / JSON / XML writers
+│   │   ├── sql_engine.py        # DuckDB wrapper + query sandboxing
+│   │   ├── pivot.py             # Pivot table builder
+│   │   ├── formula.py           # Excel-style formula evaluator
+│   │   ├── dashboard.py         # Industry dashboard templates
+│   │   ├── stats_engine.py      # Hypothesis tests (SciPy)
+│   │   ├── ml_engine.py         # Baseline model training (scikit-learn)
+│   │   ├── pipeline.py          # YAML pipeline serialization
+│   │   └── cleanup.py           # Expired session purging
 │   ├── routes/
-│   │   ├── main.py             # Page routes
-│   │   ├── preprocess.py       # Profiling + imputation API
-│   │   ├── visualize.py        # Chart API
-│   │   ├── sql.py              # SQL query API
-│   │   ├── pivot.py            # Pivot API
-│   │   ├── formula.py          # Formula API
-│   │   ├── dashboard.py        # Dashboard template API
-│   │   ├── pipeline.py         # Pipeline export / apply API
-│   │   └── export.py           # Download routes
-│   ├── templates/              # Jinja2 templates
-│   └── static/                 # CSS, JS, SVG assets
-├── storage/                    # Per-session Parquet files (gitignored)
-├── config.py                   # Environment-aware configuration
+│   │   ├── main.py              # Page routes
+│   │   ├── preprocess.py        # Profiling + imputation API
+│   │   ├── visualize.py         # Chart API
+│   │   ├── sql.py               # SQL query API
+│   │   ├── pivot.py             # Pivot API
+│   │   ├── formula.py           # Formula API
+│   │   ├── dashboard.py         # Dashboard template API
+│   │   ├── stats.py             # Statistical test API
+│   │   ├── ml.py                # ML training API
+│   │   ├── pipeline.py          # Pipeline export / apply API
+│   │   └── export.py            # Download routes
+│   ├── templates/               # Jinja2 templates
+│   └── static/                  # CSS, JS, SVG assets
+├── storage/                     # Per-session Parquet files (gitignored)
+├── config.py                    # Environment-aware configuration
 ├── requirements.txt
-└── run.py                      # Gunicorn entry point (run:app)
+└── run.py                       # Gunicorn entry point (run:app)
 
 ```
 
@@ -252,5 +309,31 @@ Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive pi
 * Website: [arafatkhan.vercel.app](https://arafatkhan.vercel.app)
 
 ## License
-
 MIT — free to use, modify, and distribute.
+---
+
+## What changed from your version
+
+| Section | Change |
+|---|---|
+| **Stats** | New section — covers all 5 tests, effect sizes, interpretation |
+| **ML Studio** | New section — lists all 8 models, all metrics, notes target locking |
+| **Tech stack** | Added SciPy, updated scikit-learn note |
+| **Project structure** | Added `stats_engine.py`, `ml_engine.py`, `stats.py`, `ml.py` routes |
+| **Multi-format export** | Added filename-preservation note |
+| **Roadmap** | Checked off Stats and ML; added user accounts |
+| **Formatting** | Fixed broken tables, inconsistent bullets, mixed code blocks |
+| **Deployment table** | Properly formed markdown table |
+| **Security section** | Added formula sandbox details |
+
+---
+
+## Save and push
+
+Save as `README.md` in `D:\dataforge\README.md` (overwrite the existing file), then:
+
+```bash
+cd /d/dataforge
+git add README.md
+git commit -m "Update README with stats, ML, and clean formatting"
+git push
