@@ -2,6 +2,7 @@ import io
 import csv
 from flask import Blueprint, jsonify, request, send_file
 from app.core import storage, sql_engine
+from app.core import storage, sql_engine, exporter
 
 sql_bp = Blueprint("sql", __name__)
 
@@ -47,7 +48,7 @@ def run():
 
 @sql_bp.post("/export")
 def export():
-    """Re-run the query and stream the full result as CSV."""
+    """Re-run the query and stream the full result as CSV or JSON."""
     try:
         body = request.get_json(silent=True) or {}
         sql = body.get("sql", "")
@@ -56,10 +57,10 @@ def export():
             return jsonify({"ok": False, "error": "Empty query."}), 400
 
         df = storage.load_working()
-        # Larger cap for exports
         result = sql_engine.run_query(df, sql, max_rows=100_000)
 
         if fmt == "csv":
+            import csv
             buf = io.StringIO()
             w = csv.writer(buf)
             w.writerow(result["columns"])
@@ -69,7 +70,7 @@ def export():
                 io.BytesIO(data),
                 mimetype="text/csv",
                 as_attachment=True,
-                download_name="dataforge_query.csv",
+                download_name=exporter.build_output_filename("csv", suffix="query"),
             )
 
         if fmt == "json":
@@ -84,7 +85,7 @@ def export():
                 io.BytesIO(data),
                 mimetype="application/json",
                 as_attachment=True,
-                download_name="dataforge_query.json",
+                download_name=exporter.build_output_filename("json", suffix="query"),
             )
 
         return jsonify({"ok": False, "error": "Unsupported format."}), 400

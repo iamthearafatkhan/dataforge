@@ -28,7 +28,9 @@ def upload():
         flash("Please choose a file.", "error")
         return redirect(url_for("main.index"))
 
-    name = f.filename.lower()
+    original_name = f.filename
+    name = original_name.lower()
+
     try:
         if name.endswith(".csv"):
             df = pd.read_csv(f)
@@ -47,7 +49,10 @@ def upload():
         flash("File is empty.", "error")
         return redirect(url_for("main.index"))
 
+    # Remember the original filename for future downloads
+    session["original_filename"] = original_name
     session.pop("fitted", None)
+
     storage.save_raw(df)
     flash(f"Loaded {len(df):,} rows × {len(df.columns)} columns.", "success")
     return redirect(url_for("main.profile_page"))
@@ -95,6 +100,18 @@ def dashboard_page():
     return g or render_template("dashboard.html")
 
 
+@main_bp.route("/stats")
+def stats_page():
+    g = _expire_guard()
+    return g or render_template("stats.html")
+
+
+@main_bp.route("/ml")
+def ml_page():
+    g = _expire_guard()
+    return g or render_template("ml.html")
+
+
 @main_bp.route("/export")
 def export_page():
     g = _expire_guard()
@@ -107,13 +124,3 @@ def reset():
     session.pop("fitted", None)
     flash("Reset to original dataset.", "success")
     return redirect(url_for("main.profile_page"))
-
-@main_bp.route("/stats")
-def stats_page():
-    g = _expire_guard()
-    return g or render_template("stats.html")
-
-@main_bp.route("/ml")
-def ml_page():
-    g = _expire_guard()
-    return g or render_template("ml.html")

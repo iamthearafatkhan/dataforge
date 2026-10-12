@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, send_file
 import io
 import csv
 from app.core import storage, pivot
+from app.core import storage, pivot, exporter
 
 pivot_bp = Blueprint("pivot", __name__)
 
@@ -56,6 +57,7 @@ def export():
             fill_value=body.get("fill_value"),
             margins=bool(body.get("margins", False)),
         )
+        import io, csv
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(result["columns"])
@@ -64,7 +66,7 @@ def export():
             io.BytesIO(buf.getvalue().encode("utf-8")),
             mimetype="text/csv",
             as_attachment=True,
-            download_name="dataforge_pivot.csv",
+            download_name=exporter.build_output_filename("csv", suffix="pivot"),
         )
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
