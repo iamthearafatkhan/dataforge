@@ -1403,3 +1403,16 @@ kbd {
   pointer-events: none;
   text-decoration: line-through;
 }
+
+/* ---------- AK logo in footer ---------- */
+.footlink-logo {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+  filter: brightness(0) invert(0.55);
+  transition: filter var(--t);
+}
+.footlink:hover .footlink-logo {
+  filter: brightness(0) invert(1);
+}
