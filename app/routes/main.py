@@ -107,3 +107,13 @@ def reset():
     session.pop("fitted", None)
     flash("Reset to original dataset.", "success")
     return redirect(url_for("main.profile_page"))
+
+@main_bp.route("/stats")
+def stats_page():
+    g = _expire_guard()
+    return g or render_template("stats.html")
+
+@main_bp.route("/ml")
+def ml_page():
+    g = _expire_guard()
+    return g or render_template("ml.html")

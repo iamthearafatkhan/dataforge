@@ -1,0 +1,193 @@
+{% extends "base.html" %} {% block title %}Statistics{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Statistical Tests</h1>
+    <p class="page-desc">
+      Run hypothesis tests on your dataset. Suggestions adapt to your actual
+      column types.
+    </p>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Test type</h2>
+    <p class="muted">The fields below adapt to the test you pick.</p>
+  </div>
+  <div class="chart-controls">
+    <select id="test-kind">
+      <option value="correlate">Correlation (numeric × numeric)</option>
+      <option value="t_test">t-test (numeric by 2 groups)</option>
+      <option value="anova">ANOVA (numeric by 3+ groups)</option>
+      <option value="chi_square">Chi-square (categorical × categorical)</option>
+      <option value="normality">Normality (single numeric)</option>
+    </select>
+
+    <select id="field-a" class="field"></select>
+    <select id="field-b" class="field"></select>
+    <select id="field-method" class="field">
+      <option value="pearson">Pearson</option>
+      <option value="spearman">Spearman</option>
+      <option value="kendall">Kendall</option>
+    </select>
+
+    <button class="btn primary" onclick="runTest()" data-no-loader>
+      ▶ Run test
+    </button>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Suggested tests</h2>
+    <p class="muted">Click to load a suggestion based on your columns.</p>
+  </div>
+  <div id="suggestions" class="suggestions"></div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Result</h2>
+    <p class="muted" id="stats-meta">Run a test to see results.</p>
+  </div>
+  <div id="stats-result"><div class="chart-empty">No result yet.</div></div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  let COLUMNS = {};
+
+  showLoader("Loading columns…");
+  fetch("/api/stats/suggest")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) {
+        flash(d.error, "error");
+        return;
+      }
+      COLUMNS = d;
+      const opts = [...d.numeric, ...d.categorical]
+        .map((c) => `<option value="${c}">${c}</option>`)
+        .join("");
+      document.getElementById("field-a").innerHTML = opts;
+      document.getElementById("field-b").innerHTML = opts;
+
+      const wrap = document.getElementById("suggestions");
+      if (!d.suggestions.length) {
+        wrap.innerHTML =
+          '<p class="muted">No suggestions for these columns.</p>';
+        return;
+      }
+      wrap.innerHTML = d.suggestions
+        .map(
+          (s, i) =>
+            `<button class="suggestion" data-no-loader onclick="loadSuggestion(${i})">
+         <b>${s.label}</b>
+       </button>`,
+        )
+        .join("");
+      window.__suggestions = d.suggestions;
+    });
+
+  function loadSuggestion(i) {
+    const s = window.__suggestions[i];
+    document.getElementById("test-kind").value = s.kind;
+    updateFields();
+    if (s.params.col_a)
+      document.getElementById("field-a").value = s.params.col_a;
+    if (s.params.col_b)
+      document.getElementById("field-b").value = s.params.col_b;
+    if (s.params.numeric_col)
+      document.getElementById("field-a").value = s.params.numeric_col;
+    if (s.params.group_col)
+      document.getElementById("field-b").value = s.params.group_col;
+    if (s.params.col) document.getElementById("field-a").value = s.params.col;
+    if (s.params.method)
+      document.getElementById("field-method").value = s.params.method;
+  }
+
+  function updateFields() {
+    const k = document.getElementById("test-kind").value;
+    const show = (id, yes) =>
+      (document.getElementById(id).style.display = yes
+        ? "inline-block"
+        : "none");
+    show("field-a", true);
+    show("field-b", k !== "normality");
+    show("field-method", k === "correlate");
+  }
+
+  document.getElementById("test-kind").addEventListener("change", updateFields);
+  updateFields();
+
+  function runTest() {
+    const k = document.getElementById("test-kind").value;
+    const a = document.getElementById("field-a").value;
+    const b = document.getElementById("field-b").value;
+    const params = {};
+    if (k === "correlate") {
+      params.col_a = a;
+      params.col_b = b;
+      params.method = document.getElementById("field-method").value;
+    } else if (k === "t_test" || k === "anova") {
+      params.numeric_col = a;
+      params.group_col = b;
+    } else if (k === "chi_square") {
+      params.col_a = a;
+      params.col_b = b;
+    } else if (k === "normality") {
+      params.col = a;
+    }
+
+    showLoader("Running test…");
+    fetch("/api/stats/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: k, params }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        renderResult(d.result);
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Request failed", "error");
+      });
+  }
+
+  function renderResult(r) {
+    document.getElementById("stats-meta").textContent = r.test;
+    const wrap = document.getElementById("stats-result");
+
+    let html = '<table class="sql-table"><tbody>';
+    const rows = [
+      ["Test", r.test],
+      ["n", r.n],
+      ["Statistic", r.statistic],
+      ["p-value", r.p_value],
+    ];
+    if (r.detail) rows.push(["Detail", r.detail]);
+    if (r.groups) rows.push(["Groups", r.groups.join(", ")]);
+    if (r.means) rows.push(["Group means", r.means.join(", ")]);
+    if (r.cohens_d != null) rows.push(["Cohen's d", r.cohens_d]);
+    if (r.eta_squared != null) rows.push(["Eta squared", r.eta_squared]);
+    if (r.cramers_v != null) rows.push(["Cramér's V", r.cramers_v]);
+    if (r.dof != null) rows.push(["df", r.dof]);
+    if (r.interpretation) rows.push(["Interpretation", r.interpretation]);
+
+    rows.forEach(([k, v]) => {
+      html += `<tr><th style="width:200px;">${k}</th><td>${v}</td></tr>`;
+    });
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+  }
+</script>
+{% endblock %}

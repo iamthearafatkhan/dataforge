@@ -81,6 +81,16 @@
           >SQL</a
         >
         <a
+          href="{{ url_for('main.stats_page') }}"
+          class="navlink {% if request.endpoint == 'main.stats_page' %}active{% endif %}"
+          >Stats</a
+        >
+        <a
+          href="{{ url_for('main.ml_page') }}"
+          class="navlink {% if request.endpoint == 'main.ml_page' %}active{% endif %}"
+          >ML</a
+        >
+        <a
           href="{{ url_for('main.pivot_page') }}"
           class="navlink {% if request.endpoint == 'main.pivot_page' %}active{% endif %}"
           >Pivot</a

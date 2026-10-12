@@ -1,0 +1,210 @@
+{% extends "base.html" %} {% block title %}ML Studio{% endblock %} {% block
+content %}
+
+<div class="page-head">
+  <div>
+    <h1 class="page-title">ML Studio</h1>
+    <p class="page-desc">
+      Train a quick baseline model. Pick a target, choose features, and inspect
+      accuracy, importances, and confusion matrix.
+    </p>
+  </div>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Configure</h2></div>
+
+  <div class="formula-row">
+    <select id="ml-target"></select>
+    <select id="ml-model"></select>
+    <input
+      type="number"
+      id="ml-test-size"
+      value="0.2"
+      min="0.1"
+      max="0.5"
+      step="0.05"
+      class="formula-target"
+    />
+  </div>
+
+  <div class="card-head" style="margin-top: 14px">
+    <h3 style="font-size: 15px">Features</h3>
+  </div>
+  <div id="feature-picker" class="field-picker" style="min-height: 100px"></div>
+
+  <div class="formula-actions" style="margin-top: 14px">
+    <button class="btn primary" onclick="trainModel()" data-no-loader>
+      ▶ Train model
+    </button>
+    <button class="btn ghost" onclick="selectAllFeatures()" data-no-loader>
+      Select all
+    </button>
+    <button class="btn ghost" onclick="clearFeatures()" data-no-loader>
+      Clear
+    </button>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Result</h2>
+    <p class="muted" id="ml-meta">Train a model to see results.</p>
+  </div>
+  <div id="ml-result"><div class="chart-empty">No model trained yet.</div></div>
+</section>
+
+{% endblock %} {% block scripts %}
+<script>
+  let STATE = { features: [] };
+
+  showLoader("Loading columns…");
+  fetch("/api/ml/suggest")
+    .then((r) => r.json())
+    .then((d) => {
+      hideLoader();
+      if (!d.ok) {
+        flash(d.error, "error");
+        return;
+      }
+      const targetSel = document.getElementById("ml-target");
+      const allCols = [...d.numeric, ...d.categorical];
+      targetSel.innerHTML = allCols
+        .map(
+          (c) =>
+            `<option value="${c}" ${c === d.target_guess ? "selected" : ""}>${c}</option>`,
+        )
+        .join("");
+
+      const modelSel = document.getElementById("ml-model");
+      const models = [...d.classifiers, ...d.regressors];
+      modelSel.innerHTML = models
+        .map(
+          (m) =>
+            `<option value="${m}" ${m === "random_forest" ? "selected" : ""}>${m.replace(/_/g, " ")}</option>`,
+        )
+        .join("");
+
+      const featurePick = document.getElementById("feature-picker");
+      STATE.features = [...d.features_guess];
+      featurePick.innerHTML = allCols
+        .map(
+          (c) =>
+            `<button type="button" class="field-chip ${STATE.features.includes(c) ? "selected" : ""}"
+               data-value="${c}">${c}</button>`,
+        )
+        .join("");
+    });
+
+  document.addEventListener("click", (e) => {
+    const chip = e.target.closest("#feature-picker .field-chip");
+    if (!chip) return;
+    const v = chip.dataset.value;
+    const i = STATE.features.indexOf(v);
+    if (i >= 0) STATE.features.splice(i, 1);
+    else STATE.features.push(v);
+    chip.classList.toggle("selected");
+  });
+
+  function selectAllFeatures() {
+    document.querySelectorAll("#feature-picker .field-chip").forEach((c) => {
+      if (!STATE.features.includes(c.dataset.value))
+        STATE.features.push(c.dataset.value);
+      c.classList.add("selected");
+    });
+  }
+  function clearFeatures() {
+    STATE.features = [];
+    document
+      .querySelectorAll("#feature-picker .field-chip")
+      .forEach((c) => c.classList.remove("selected"));
+  }
+
+  function trainModel() {
+    const target = document.getElementById("ml-target").value;
+    const model = document.getElementById("ml-model").value;
+    const test_size = parseFloat(
+      document.getElementById("ml-test-size").value || "0.2",
+    );
+
+    if (!target) {
+      flash("Pick a target column.", "error");
+      return;
+    }
+    if (!STATE.features.length) {
+      flash("Pick at least one feature.", "error");
+      return;
+    }
+
+    showLoader("Training model… this may take 10–30 seconds");
+    fetch("/api/ml/train", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        target,
+        features: STATE.features,
+        model,
+        test_size,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        hideLoader();
+        if (!d.ok) {
+          flash(d.error, "error");
+          return;
+        }
+        renderResult(d.result);
+      })
+      .catch(() => {
+        hideLoader();
+        flash("Training failed", "error");
+      });
+  }
+
+  function renderResult(r) {
+    document.getElementById("ml-meta").textContent =
+      `${r.task} · ${r.model.replace(/_/g, " ")} · ${r.train_rows} train / ${r.test_rows} test`;
+
+    const wrap = document.getElementById("ml-result");
+    let html =
+      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">';
+    Object.entries(r.metrics).forEach(([k, v]) => {
+      html += `<div class="kpi"><div class="kpi-label">${k}</div><div class="kpi-value">${v ?? "—"}</div></div>`;
+    });
+    html += "</div>";
+
+    if (r.extras.cv_mean != null) {
+      html += `<p class="muted">Cross-validation ${r.task === "classification" ? "accuracy" : "R²"}: <b>${r.extras.cv_mean.toFixed(4)}</b> ± ${(r.extras.cv_std || 0).toFixed(4)} across 5 folds</p>`;
+    }
+
+    if (r.extras.feature_importance && r.extras.feature_importance.length) {
+      html += '<h3 style="margin-top:20px;">Feature importance</h3>';
+      html +=
+        '<div class="table-wrap"><table class="sql-table"><thead><tr><th>Feature</th><th>Importance</th></tr></thead><tbody>';
+      r.extras.feature_importance.forEach((f) => {
+        html += `<tr><td>${f.feature}</td><td>${(f.importance ?? 0).toFixed(4)}</td></tr>`;
+      });
+      html += "</tbody></table></div>";
+    }
+
+    if (r.extras.confusion_matrix) {
+      const cm = r.extras.confusion_matrix;
+      const classes = r.extras.classes || [];
+      html += '<h3 style="margin-top:20px;">Confusion matrix</h3>';
+      html +=
+        '<div class="table-wrap"><table class="sql-table"><thead><tr><th>actual ↓ / predicted →</th>';
+      classes.forEach((c) => (html += `<th>${c}</th>`));
+      html += "</tr></thead><tbody>";
+      cm.forEach((row, i) => {
+        html += `<tr><th>${classes[i] ?? i}</th>`;
+        row.forEach((v) => (html += `<td>${v}</td>`));
+        html += "</tr>";
+      });
+      html += "</tbody></table></div>";
+    }
+
+    wrap.innerHTML = html;
+  }
+</script>
+{% endblock %}

@@ -23,6 +23,10 @@ def create_app():
     from app.routes.pivot import pivot_bp
     from app.routes.formula import formula_bp
     from app.routes.dashboard import dashboard_bp
+    from app.routes.stats import stats_bp
+    from app.routes.ml import ml_bp
+
+
 
     app.register_blueprint(main_bp)
     app.register_blueprint(preprocess_bp, url_prefix="/api/preprocess")
@@ -33,6 +37,8 @@ def create_app():
     app.register_blueprint(pivot_bp, url_prefix="/api/pivot")
     app.register_blueprint(formula_bp, url_prefix="/api/formula")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
+    app.register_blueprint(stats_bp, url_prefix="/api/stats")
+    app.register_blueprint(ml_bp, url_prefix="/api/ml")
 
     # Friendly 413 handler
     @app.errorhandler(413)
