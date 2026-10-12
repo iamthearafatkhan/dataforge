@@ -2,16 +2,25 @@ import os
 from flask import Flask, jsonify, request, flash, redirect, url_for
 from config import Config
 
+from flask import Flask, jsonify, request, flash, redirect, url_for, session
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     os.makedirs(app.config["STORAGE_DIR"], exist_ok=True)
+    from datetime import datetime, timedelta
+    @app.before_request
+    def make_session_permanent():
+        session.permanent = True
+        # Refresh the cookie on every request so active users stay logged in
+        session.modified = True
 
     # Purge expired sessions on startup
     with app.app_context():
         from app.core.cleanup import purge_expired_sessions
         purge_expired_sessions()
+        from app.core.db import init_schema
+        init_schema()
 
     # Register blueprints
     from app.routes.main import main_bp
