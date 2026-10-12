@@ -1,21 +1,19 @@
 import os
-from flask import Flask, jsonify, request, flash, redirect, url_for
+from datetime import datetime, timedelta
+from flask import Flask, jsonify, request, flash, redirect, url_for, session
 from config import Config
 
-from flask import Flask, jsonify, request, flash, redirect, url_for, session
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     os.makedirs(app.config["STORAGE_DIR"], exist_ok=True)
-    from datetime import datetime, timedelta
+
     @app.before_request
     def make_session_permanent():
         session.permanent = True
-        # Refresh the cookie on every request so active users stay logged in
         session.modified = True
 
-    # Purge expired sessions on startup
     with app.app_context():
         from app.core.cleanup import purge_expired_sessions
         purge_expired_sessions()
@@ -35,8 +33,6 @@ def create_app():
     from app.routes.stats import stats_bp
     from app.routes.ml import ml_bp
 
-
-
     app.register_blueprint(main_bp)
     app.register_blueprint(preprocess_bp, url_prefix="/api/preprocess")
     app.register_blueprint(visualize_bp, url_prefix="/api/visualize")
@@ -49,7 +45,6 @@ def create_app():
     app.register_blueprint(stats_bp, url_prefix="/api/stats")
     app.register_blueprint(ml_bp, url_prefix="/api/ml")
 
-    # Friendly 413 handler
     @app.errorhandler(413)
     def too_large(_e):
         limit_mb = app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
@@ -59,7 +54,6 @@ def create_app():
         flash(msg, "error")
         return redirect(url_for("main.index"))
 
-    # Global template context — available on EVERY page
     @app.context_processor
     def inject_globals():
         from app.core import storage
