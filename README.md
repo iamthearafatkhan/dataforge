@@ -1,42 +1,65 @@
-# DataForge
+<div align="center">
+
+# 🛠️ DataForge
 
 **Clean · Understand · Query · Export**
 
-A web-based data workbench for analysts, data scientists, and anyone who works
-with tabular data. Upload a CSV, Excel, or JSON file and go from raw and messy
-to clean and queryable — without writing a line of code.
+A web-based data workbench for analysts, data scientists, and anyone who works with tabular data. Upload a CSV, Excel, or JSON file and go from raw and messy to clean and queryable — without writing a line of code.
 
-**Live demo:** [dataforge-studio.onrender.com](https://dataforge-studio.onrender.com)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-dataforge--studio.onrender.com-blue?style=for-the-badge&logo=render)](https://dataforge-studio.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.1-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
----
-
-## Why this exists
-
-Data professionals spend 60–80% of their time on data preparation. Existing
-tools force a choice: use a Python library and write code, or use a GUI and
-give up control. DataForge is the middle path — a browser tool with
-per-column control, statistical imputation methods normally reserved for code,
-SQL querying, pivot tables, formulas, statistical tests, and baseline ML
-training, all without installation.
-
-Built as a portfolio project, engineered for real use.
+</div>
 
 ---
 
-## Features
+## 📑 Table of Contents
+- [Why this exists](#-why-this-exists)
+- [Features](#-features)
+  - [Intelligent Profiling](#intelligent-profiling)
+  - [Per-feature Imputation](#per-feature-imputation)
+  - [Cleaning Operations](#cleaning-operations)
+  - [Interactive Visualization](#interactive-visualization)
+  - [SQL Studio](#sql-studio)
+  - [Pivot Table Builder](#pivot-table-builder)
+  - [Formula Builder](#formula-builder)
+  - [Statistical Tests](#statistical-tests)
+  - [ML Studio](#ml-studio)
+  - [Dashboard Templates](#dashboard-templates)
+  - [Pipeline Export & Replay](#pipeline-export--replay)
+  - [Multi-format Export](#multi-format-export)
+  - [Product Polish](#product-polish)
+- [Tech Stack](#️-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started Locally](#-getting-started-locally)
+- [Deployment](#-deployment)
+- [Security & Privacy](#-security--privacy)
+- [Author](#-author)
 
-### Intelligent profiling
-Every column is analyzed on upload: data type, missingness percentage,
-cardinality, distribution skew, and correlation with other columns. Each
-column gets a recommended imputation strategy with a plain-English
-explanation — no black boxes.
+---
 
-### Per-feature imputation
-Unlike tools that apply one global strategy, DataForge lets you pick the
-method **per column**:
+## 💡 Why this exists
+
+Data professionals spend 60–80% of their time on data preparation. Existing tools force a choice: use a Python library and write code, or use a GUI and give up control. 
+
+**DataForge is the middle path** — a browser tool with per-column control, statistical imputation methods normally reserved for code, SQL querying, pivot tables, formulas, statistical tests, and baseline ML training, all without installation.
+
+*Built as a portfolio project, engineered for real use.*
+
+---
+
+## ✨ Features
+
+### Intelligent Profiling
+Every column is analyzed on upload: data type, missingness percentage, cardinality, distribution skew, and correlation with other columns. Each column gets a recommended imputation strategy with a plain-English explanation — no black boxes.
+
+### Per-feature Imputation
+Unlike tools that apply one global strategy, DataForge lets you pick the method **per column**:
 
 | Method | When to use |
-|---|---|
+| :--- | :--- |
 | `mean` / `median` | Numeric columns — symmetric (mean) or skewed (median) |
 | `mode` | Categorical columns |
 | `KNN` | Numeric with correlated features — uses nearest neighbors |
@@ -45,16 +68,15 @@ method **per column**:
 | `constant` | Custom fill value |
 | `drop` | Drop rows with missing values |
 
-Recommendations are pre-selected but every choice is overridable.
+Recommendations are pre-selected, but every choice is overridable.
 
-### Cleaning operations
+### Cleaning Operations
 - Strip whitespace from text columns
 - Auto-fix data types (coerce numeric strings, parse dates)
 - Drop duplicate rows
 
-### Interactive visualization
+### Interactive Visualization
 Built on Plotly — every chart is fully interactive and downloadable as PNG.
-
 - Histogram, box plot, violin plot
 - Box / violin by category
 - Scatter, line, time series (daily / weekly / monthly / quarterly / yearly)
@@ -65,9 +87,7 @@ Built on Plotly — every chart is fully interactive and downloadable as PNG.
 - Correlation heatmap
 
 ### SQL Studio
-Write SQL directly against your uploaded dataset. The table is named `df`.
-Powered by [DuckDB](https://duckdb.org/), the modern in-process analytical
-database.
+Write SQL directly against your uploaded dataset. The table is named `df`. Powered by [DuckDB](https://duckdb.org/), the modern in-process analytical database.
 
 ```sql
 SELECT Sex, AVG(Age) AS avg_age, COUNT(*) AS n
@@ -75,11 +95,6 @@ FROM df
 GROUP BY Sex
 ORDER BY avg_age DESC;
 ```
-- Supports SELECT, WITH, JOIN, GROUP BY, window functions, CTEs
-- Read-only enforcement — DROP, DELETE, COPY, ATTACH are blocked
-- External file access disabled at the database level
-- Result export to CSV or JSON
-- Adaptive starter queries based on your actual columns
 
 ### Pivot table builder
 * Build pivot tables like in Excel:
@@ -90,7 +105,8 @@ ORDER BY avg_age DESC;
 * Export the pivot result as CSV
 
 ### Formula builder
-Compute new columns with Excel-style formulas. Type =, reference columns by name, use familiar functions:
+Compute new columns with Excel-style formulas. Type =, reference columns by name, and use familiar functions.
+```excel
 =price * quantity
 =IF(price > 100, "high", "low")
 =UPPER(name)
@@ -98,9 +114,9 @@ Compute new columns with Excel-style formulas. Type =, reference columns by name
 =YEAR(order_date)
 =ROUND(price * 0.9, 2)
 =COALESCE(discount, 0)
-
+```
 * Supported functions: IF, ABS, ROUND, SQRT, LOG, EXP, UPPER, LOWER, TRIM, LEN, CONCAT, COALESCE, LEFT, RIGHT, REPLACE, YEAR, MONTH, DAY, ISBLANK, TODAY, NOW.
-- Examples adapt to your actual columns — no hardcoded references.
+- Examples adapt to your actual columns - no hardcoded references.
 
 ### Statistical tests
 Run hypothesis tests directly on the uploaded dataset. Suggestions adapt to
@@ -150,7 +166,7 @@ Each chart is downloadable as PNG.
 ---
 ### Pipeline export & replay
 Save your entire preprocessing recipe as a YAML file. On new data, upload the YAML plus a fresh CSV — DataForge re-applies the exact same transformations using the fitted parameters from the original run, not re-fitted values. This is how production ML pipelines maintain train/test consistency and avoid data leakage.
-```
+```yaml
 version: "1.0"
 tool: DataForge
 cleaning:
@@ -174,16 +190,21 @@ dataforge_titanic.csv on download.
 - JSON — for APIs and web apps
 - XML — for legacy integrations
 
-### Product polish
-> Dark and light themes (persisted across reloads)
-> Animated landing page with typewriter effect
-> Global loading indicator
-> 24-hour session retention with automatic cleanup
-> Per-session file isolation — never shared between users
-> FAQ section with self-serve answers
+### Product Polish
+🌗 Dark and light themes (persisted across reloads)
+
+✨ Animated landing page with typewriter effect
+
+⏳ Global loading indicator
+
+⏱️ 24-hour session retention with automatic cleanup
+
+🔒 Per-session file isolation — never shared between users
+
+❓ FAQ section with self-serve answers
 
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | 
 
@@ -203,7 +224,7 @@ dataforge_titanic.csv on download.
 
 ## Project Structure
 
-```
+```text
 dataforge/
 ├── app/
 │   ├── __init__.py              # App factory, blueprint registration
@@ -243,7 +264,7 @@ dataforge/
 
 ```
 
-## Getting Started Locally
+## 🚀 Getting Started Locally
 
 ### Prerequisites
 
@@ -253,7 +274,7 @@ dataforge/
 
 ### Installation
 
-```
+```bash
 git clone https://github.com/iamthearafatkhan/dataforge.git
 cd dataforge
 
@@ -267,14 +288,14 @@ pip install -r requirements.txt
 
 ### Run
 
-```
+```bash
 python run.py
 
 ```
 
 Open <http://localhost:5000> in your browser.
 
-## Deployment
+## ☁️ Deployment
 
 Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive ping every 10 minutes to prevent idle spin-down.
 
@@ -284,7 +305,7 @@ Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive pi
 | **Start command** | `gunicorn run:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120` | 
 | **Live URL** | <https://dataforge-studio.onrender.com> | 
 
-## Security & Privacy
+## 🔒 Security & Privacy
 
 * **Read-only SQL:** Only `SELECT` and `WITH` statements are permitted. DDL and DML statements are rejected by a validator before execution.
 
@@ -298,7 +319,7 @@ Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive pi
 
 * **Upload cap:** Configurable via `MAX_UPLOAD_MB` environment variable (Default: `100 MB`).
 
-## Author
+## 👨‍💻 Author
 
 **Arafat Khan**
 
@@ -308,8 +329,7 @@ Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive pi
 
 * Website: [arafatkhan.vercel.app](https://arafatkhan.vercel.app)
 
-## License
-MIT — free to use, modify, and distribute.
+
 ---
 
 ## What changed from your version
@@ -325,5 +345,11 @@ MIT — free to use, modify, and distribute.
 | **Formatting** | Fixed broken tables, inconsistent bullets, mixed code blocks |
 | **Deployment table** | Properly formed markdown table |
 | **Security section** | Added formula sandbox details |
+
+---
+
+## 📄 License
+MIT — free to use, modify, and distribute.
+
 
 ---
