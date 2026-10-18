@@ -63,11 +63,11 @@ document.addEventListener("click", (e) => {
   if (a.dataset.noLoader !== undefined) return;
 
   const href = a.getAttribute("href") || "";
-  if (!href) return;                              // no href → not a navigation
+  if (!href) return;                          
   if (href.startsWith("#")) return;
   if (href.startsWith("mailto:")) return;
   if (href.startsWith("javascript:")) return;
-  if (href.startsWith("/api/export/")) return;    // export downloads
+  if (href.startsWith("/api/export/")) return;   
 
   showLoader("Loading…");
 });
