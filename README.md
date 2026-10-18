@@ -332,7 +332,7 @@ Deployed on Render (free tier, Python runtime) with a cron-job.org keep-alive pi
 
 ---
 
-## What changed from your version
+## What added in our updated version
 
 | Section | Change |
 |---|---|
